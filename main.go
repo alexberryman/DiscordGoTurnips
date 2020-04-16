@@ -6,14 +6,14 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/bwmarrin/discordgo"
 	_ "github.com/lib/pq"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/bwmarrin/discordgo"
+	"time"
 )
 
 // Variables used for command line parameters
@@ -101,6 +101,22 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if strings.Contains(input, "history") {
 			reactionEmoji, response = fetchUserPriceHistory(q, ctx, user, reactionEmoji, response)
 
+		} else if strings.HasPrefix(input, "timezone") {
+			timezoneInput := strings.TrimSpace(strings.Replace(input, "timezone", "", 1))
+			_, err := time.LoadLocation(timezoneInput)
+			if err != nil {
+				reactionEmoji = "⛔"
+				response = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+
+			} else {
+				reactionEmoji = "✅"
+			}
+
+			_, err = q.UpdateTimeZone(ctx, turnips.UpdateTimeZoneParams{
+				DiscordID: user.DiscordID,
+				TimeZone:  timezoneInput,
+			})
+
 		} else {
 			response = "Wut?"
 		}
@@ -132,9 +148,29 @@ func fetchUserPriceHistory(q *turnips.Queries, ctx context.Context, user turnips
 }
 
 func persistTurnipPrice(q *turnips.Queries, ctx context.Context, user turnips.User, turnipPrice int, reactionEmoji string, response string) (string, string) {
-	_, err := q.CreatePrice(ctx, turnips.CreatePriceParams{
+	usersTimeZone, err := time.LoadLocation(user.TimeZone)
+	if err != nil {
+		reactionEmoji = "⛔"
+		response = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+		return reactionEmoji, response
+	}
+
+	localTime := time.Now().In(usersTimeZone)
+	var meridiem turnips.Meridiem
+	switch fmt.Sprint(localTime.Format("pm")) {
+	case "am":
+		meridiem = turnips.MeridiemAm
+	case "pm":
+		meridiem = turnips.MeridiemPm
+	}
+
+	_, err = q.CreatePrice(ctx, turnips.CreatePriceParams{
 		DiscordID: user.DiscordID,
 		Price:     int32(turnipPrice),
+		Meridiem:  meridiem,
+		DayOfWeek: int32(localTime.Weekday()),
+		DayOfYear: int32(localTime.YearDay()),
+		Year:      int32(localTime.Year()),
 	})
 
 	if err != nil {
@@ -154,8 +190,8 @@ func getOrCreateUser(s *discordgo.Session, m *discordgo.MessageCreate, existingU
 		s.MessageReactionAdd(m.ChannelID, m.Message.ID, "👤")
 	} else {
 		user, _ = q.CreateUser(ctx, turnips.CreateUserParams{
-			Username:  m.Author.Username,
 			DiscordID: m.Author.ID,
+			Username:  m.Author.Username,
 		})
 		s.MessageReactionAdd(m.ChannelID, m.Message.ID, "🆕")
 		fmt.Println("Created User", user)

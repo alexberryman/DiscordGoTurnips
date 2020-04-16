@@ -22,24 +22,25 @@ func (q *Queries) CountUsersByDiscordId(ctx context.Context, discordID string) (
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (username, discord_id)
+INSERT INTO users (discord_id, username)
 VALUES ($1, $2)
-RETURNING id, username, discord_id, friend_code
+RETURNING id, username, discord_id, friend_code, time_zone
 `
 
 type CreateUserParams struct {
-	Username  string `json:"username"`
 	DiscordID string `json:"discord_id"`
+	Username  string `json:"username"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.queryRow(ctx, q.createUserStmt, createUser, arg.Username, arg.DiscordID)
+	row := q.queryRow(ctx, q.createUserStmt, createUser, arg.DiscordID, arg.Username)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
 		&i.DiscordID,
 		&i.FriendCode,
+		&i.TimeZone,
 	)
 	return i, err
 }
@@ -56,7 +57,7 @@ func (q *Queries) DeleteUser(ctx context.Context, discordID string) error {
 }
 
 const getUsers = `-- name: GetUsers :one
-SELECT id, username, discord_id, friend_code
+SELECT id, username, discord_id, friend_code, time_zone
 FROM users
 WHERE discord_id = $1
 LIMIT 1
@@ -70,12 +71,13 @@ func (q *Queries) GetUsers(ctx context.Context, discordID string) (User, error) 
 		&i.Username,
 		&i.DiscordID,
 		&i.FriendCode,
+		&i.TimeZone,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, discord_id, friend_code
+SELECT id, username, discord_id, friend_code, time_zone
 FROM users
 ORDER BY username
 `
@@ -94,6 +96,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Username,
 			&i.DiscordID,
 			&i.FriendCode,
+			&i.TimeZone,
 		); err != nil {
 			return nil, err
 		}
@@ -110,24 +113,50 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 
 const updateFriendCode = `-- name: UpdateFriendCode :one
 UPDATE users
-set friend_code = $1
-where discord_id = $2
-RETURNING id, username, discord_id, friend_code
+set friend_code = $2
+where discord_id = $1
+RETURNING id, username, discord_id, friend_code, time_zone
 `
 
 type UpdateFriendCodeParams struct {
-	FriendCode sql.NullString `json:"friend_code"`
 	DiscordID  string         `json:"discord_id"`
+	FriendCode sql.NullString `json:"friend_code"`
 }
 
 func (q *Queries) UpdateFriendCode(ctx context.Context, arg UpdateFriendCodeParams) (User, error) {
-	row := q.queryRow(ctx, q.updateFriendCodeStmt, updateFriendCode, arg.FriendCode, arg.DiscordID)
+	row := q.queryRow(ctx, q.updateFriendCodeStmt, updateFriendCode, arg.DiscordID, arg.FriendCode)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
 		&i.DiscordID,
 		&i.FriendCode,
+		&i.TimeZone,
+	)
+	return i, err
+}
+
+const updateTimeZone = `-- name: UpdateTimeZone :one
+UPDATE users
+set time_zone = $2
+where discord_id = $1
+RETURNING id, username, discord_id, friend_code, time_zone
+`
+
+type UpdateTimeZoneParams struct {
+	DiscordID string `json:"discord_id"`
+	TimeZone  string `json:"time_zone"`
+}
+
+func (q *Queries) UpdateTimeZone(ctx context.Context, arg UpdateTimeZoneParams) (User, error) {
+	row := q.queryRow(ctx, q.updateTimeZoneStmt, updateTimeZone, arg.DiscordID, arg.TimeZone)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.DiscordID,
+		&i.FriendCode,
+		&i.TimeZone,
 	)
 	return i, err
 }

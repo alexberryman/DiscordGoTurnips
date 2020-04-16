@@ -21,18 +21,29 @@ func (q *Queries) CountPricesByDiscordId(ctx context.Context, discordID string) 
 }
 
 const createPrice = `-- name: CreatePrice :one
-INSERT INTO prices (discord_id, price)
-VALUES ($1, $2)
+INSERT INTO prices (discord_id, price, meridiem, day_of_week, day_of_year, year)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, discord_id, price, meridiem, day_of_week, day_of_year, year, created_at
 `
 
 type CreatePriceParams struct {
-	DiscordID string `json:"discord_id"`
-	Price     int32  `json:"price"`
+	DiscordID string   `json:"discord_id"`
+	Price     int32    `json:"price"`
+	Meridiem  Meridiem `json:"meridiem"`
+	DayOfWeek int32    `json:"day_of_week"`
+	DayOfYear int32    `json:"day_of_year"`
+	Year      int32    `json:"year"`
 }
 
 func (q *Queries) CreatePrice(ctx context.Context, arg CreatePriceParams) (Price, error) {
-	row := q.queryRow(ctx, q.createPriceStmt, createPrice, arg.DiscordID, arg.Price)
+	row := q.queryRow(ctx, q.createPriceStmt, createPrice,
+		arg.DiscordID,
+		arg.Price,
+		arg.Meridiem,
+		arg.DayOfWeek,
+		arg.DayOfYear,
+		arg.Year,
+	)
 	var i Price
 	err := row.Scan(
 		&i.ID,

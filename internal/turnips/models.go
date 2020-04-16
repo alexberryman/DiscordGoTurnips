@@ -43,4 +43,5 @@ type User struct {
 	Username   string         `json:"username"`
 	DiscordID  string         `json:"discord_id"`
 	FriendCode sql.NullString `json:"friend_code"`
+	TimeZone   string         `json:"time_zone"`
 }

@@ -17,8 +17,8 @@ FROM prices
 where discord_id = $1;
 
 -- name: CreatePrice :one
-INSERT INTO prices (discord_id, price)
-VALUES ($1, $2)
+INSERT INTO prices (discord_id, price, meridiem, day_of_week, day_of_year, year)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: DeletePricesForUser :exec

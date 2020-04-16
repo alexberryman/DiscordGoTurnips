@@ -55,6 +55,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateFriendCodeStmt, err = db.PrepareContext(ctx, updateFriendCode); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateFriendCode: %w", err)
 	}
+	if q.updateTimeZoneStmt, err = db.PrepareContext(ctx, updateTimeZone); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateTimeZone: %w", err)
+	}
 	return &q, nil
 }
 
@@ -115,6 +118,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing updateFriendCodeStmt: %w", cerr)
 		}
 	}
+	if q.updateTimeZoneStmt != nil {
+		if cerr := q.updateTimeZoneStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateTimeZoneStmt: %w", cerr)
+		}
+	}
 	return err
 }
 
@@ -165,6 +173,7 @@ type Queries struct {
 	listPricesStmt                 *sql.Stmt
 	listUsersStmt                  *sql.Stmt
 	updateFriendCodeStmt           *sql.Stmt
+	updateTimeZoneStmt             *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -182,5 +191,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		listPricesStmt:                 q.listPricesStmt,
 		listUsersStmt:                  q.listUsersStmt,
 		updateFriendCodeStmt:           q.updateFriendCodeStmt,
+		updateTimeZoneStmt:             q.updateTimeZoneStmt,
 	}
 }

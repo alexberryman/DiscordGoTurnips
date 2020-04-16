@@ -103,26 +103,24 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if strings.Contains(input, CmdHistory) {
 			reactionEmoji, response = fetchUserPriceHistory(q, ctx, user, reactionEmoji, response)
 
-		} else if strings.HasPrefix(input, CmdTimeZone) {
-			timezoneInput := strings.TrimSpace(strings.Replace(input, CmdTimeZone, "", 1))
-			_, err := time.LoadLocation(timezoneInput)
-			if err != nil {
-				reactionEmoji = "⛔"
-				response = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
-
+		} else if strings.Contains(input, "update") {
+			updateInput := strings.TrimSpace(strings.Replace(input, "update", "", 1))
+			if updateTurnipPrice, err := strconv.Atoi(updateInput); err == nil {
+				reactionEmoji, response = updateExistingTurnipPrice(q, ctx, user, updateTurnipPrice, reactionEmoji, response)
 			} else {
-				reactionEmoji = "✅"
+				reactionEmoji = "⛔"
+				response = "That is not a valid price"
 			}
 
-			_, err = q.UpdateTimeZone(ctx, turnips.UpdateTimeZoneParams{
-				DiscordID: user.DiscordID,
-				TimeZone:  timezoneInput,
-			})
+		} else if strings.HasPrefix(input, CmdTimeZone) {
+			reactionEmoji, response = updateUsersTimeZone(input, CmdTimeZone, reactionEmoji, response, q, ctx, user)
 		} else if strings.HasPrefix(input, "help") {
 			response = fmt.Sprintf("`%s` - register a price for your the current time (defult timezone America/Chicago). Only one is allowed morning/afternoon each day\n"+
+				"`%s` - update existing reported price\n"+
 				"`%s` - get the your price history for the week\n"+
 				"`%s` - set a timezone for yourself from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones\n",
 				fmt.Sprintf("%s 119", botMentionToken),
+				fmt.Sprintf("%s update 110", botMentionToken),
 				fmt.Sprintf("%s %s", botMentionToken, CmdHistory),
 				fmt.Sprintf("%s %s America/New_York", botMentionToken, CmdTimeZone),
 			)
@@ -138,6 +136,24 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func updateUsersTimeZone(input string, CmdTimeZone string, reactionEmoji string, response string, q *turnips.Queries, ctx context.Context, user turnips.User) (string, string) {
+	timezoneInput := strings.TrimSpace(strings.Replace(input, CmdTimeZone, "", 1))
+	_, err := time.LoadLocation(timezoneInput)
+	if err != nil {
+		reactionEmoji = "⛔"
+		response = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+
+	} else {
+		reactionEmoji = "✅"
+	}
+
+	_, err = q.UpdateTimeZone(ctx, turnips.UpdateTimeZoneParams{
+		DiscordID: user.DiscordID,
+		TimeZone:  timezoneInput,
+	})
+	return reactionEmoji, response
 }
 
 func fetchUserPriceHistory(q *turnips.Queries, ctx context.Context, user turnips.User, reactionEmoji string, response string) (string, string) {
@@ -158,11 +174,67 @@ func fetchUserPriceHistory(q *turnips.Queries, ctx context.Context, user turnips
 }
 
 func persistTurnipPrice(q *turnips.Queries, ctx context.Context, user turnips.User, turnipPrice int, reactionEmoji string, response string) (string, string) {
-	usersTimeZone, err := time.LoadLocation(user.TimeZone)
+
+	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(user, turnipPrice)
+	if err != nil {
+		return reactionEmoji, response
+	}
+
+	priceParams := turnips.CreatePriceParams{
+		DiscordID: user.DiscordID,
+		Price:     turnipPriceObj.Price,
+		Meridiem:  turnipPriceObj.Meridiem,
+		DayOfWeek: turnipPriceObj.DayOfWeek,
+		DayOfYear: turnipPriceObj.DayOfYear,
+		Year:      turnipPriceObj.Year,
+	}
+
+	_, err = q.CreatePrice(ctx, priceParams)
+
 	if err != nil {
 		reactionEmoji = "⛔"
-		response = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+		response = "You already created a price for this period"
+	} else {
+		reactionEmoji, response = turnipPriceColorfulResponse(reactionEmoji, turnipPrice, response)
+	}
+	return reactionEmoji, response
+}
+
+func updateExistingTurnipPrice(q *turnips.Queries, ctx context.Context, user turnips.User, turnipPrice int, reactionEmoji string, response string) (string, string) {
+
+	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(user, turnipPrice)
+	if err != nil {
 		return reactionEmoji, response
+	}
+
+	priceParams := turnips.UpdatePriceParams{
+		DiscordID: user.DiscordID,
+		Price:     turnipPriceObj.Price,
+		Meridiem:  turnipPriceObj.Meridiem,
+		DayOfWeek: turnipPriceObj.DayOfWeek,
+		DayOfYear: turnipPriceObj.DayOfYear,
+		Year:      turnipPriceObj.Year,
+	}
+
+	_, err = q.UpdatePrice(ctx, priceParams)
+
+	if err != nil {
+		reactionEmoji = "⛔"
+		response = "I didn't find an existing price."
+	} else {
+		reactionEmoji, response = turnipPriceColorfulResponse(reactionEmoji, turnipPrice, response)
+	}
+	return reactionEmoji, response
+}
+
+func buildPriceObjFromInput(user turnips.User, turnipPrice int) (error, string, string, turnips.Price) {
+	usersTimeZone, err := time.LoadLocation(user.TimeZone)
+	var reactionEmoji string
+	var response string
+	if err != nil {
+		reactionEmoji := "⛔"
+		response := "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+		return err, reactionEmoji, response, turnips.Price{}
 	}
 
 	localTime := time.Now().In(usersTimeZone)
@@ -174,22 +246,17 @@ func persistTurnipPrice(q *turnips.Queries, ctx context.Context, user turnips.Us
 		meridiem = turnips.MeridiemPm
 	}
 
-	_, err = q.CreatePrice(ctx, turnips.CreatePriceParams{
+	priceThing := turnips.Price{
 		DiscordID: user.DiscordID,
 		Price:     int32(turnipPrice),
 		Meridiem:  meridiem,
 		DayOfWeek: int32(localTime.Weekday()),
 		DayOfYear: int32(localTime.YearDay()),
 		Year:      int32(localTime.Year()),
-	})
-
-	if err != nil {
-		reactionEmoji = "⛔"
-		response = "You already created a price for this period"
-	} else {
-		reactionEmoji, response = turnipPriceColorfulResponse(reactionEmoji, turnipPrice, response)
 	}
-	return reactionEmoji, response
+	priceThing.Meridiem = meridiem
+
+	return err, reactionEmoji, response, priceThing
 }
 
 func getOrCreateUser(s *discordgo.Session, m *discordgo.MessageCreate, existingUserCount int64, q *turnips.Queries, ctx context.Context) turnips.User {

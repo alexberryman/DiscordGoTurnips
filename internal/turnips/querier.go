@@ -18,6 +18,7 @@ type Querier interface {
 	ListPrices(ctx context.Context) ([]Price, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	UpdateFriendCode(ctx context.Context, arg UpdateFriendCodeParams) (User, error)
+	UpdatePrice(ctx context.Context, arg UpdatePriceParams) (Price, error)
 	UpdateTimeZone(ctx context.Context, arg UpdateTimeZoneParams) (User, error)
 }
 

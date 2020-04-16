@@ -147,3 +147,46 @@ func (q *Queries) ListPrices(ctx context.Context) ([]Price, error) {
 	}
 	return items, nil
 }
+
+const updatePrice = `-- name: UpdatePrice :one
+update prices
+set price = $2
+where discord_id = $1
+  and meridiem = $3
+  and day_of_week = $4
+  and day_of_year = $5
+  and year = $6
+returning id, discord_id, price, meridiem, day_of_week, day_of_year, year, created_at
+`
+
+type UpdatePriceParams struct {
+	DiscordID string   `json:"discord_id"`
+	Price     int32    `json:"price"`
+	Meridiem  Meridiem `json:"meridiem"`
+	DayOfWeek int32    `json:"day_of_week"`
+	DayOfYear int32    `json:"day_of_year"`
+	Year      int32    `json:"year"`
+}
+
+func (q *Queries) UpdatePrice(ctx context.Context, arg UpdatePriceParams) (Price, error) {
+	row := q.queryRow(ctx, q.updatePriceStmt, updatePrice,
+		arg.DiscordID,
+		arg.Price,
+		arg.Meridiem,
+		arg.DayOfWeek,
+		arg.DayOfYear,
+		arg.Year,
+	)
+	var i Price
+	err := row.Scan(
+		&i.ID,
+		&i.DiscordID,
+		&i.Price,
+		&i.Meridiem,
+		&i.DayOfWeek,
+		&i.DayOfYear,
+		&i.Year,
+		&i.CreatedAt,
+	)
+	return i, err
+}

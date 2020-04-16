@@ -96,13 +96,15 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 		var response string
 		reactionEmoji := "❌"
+		const CmdHistory = "history"
+		const CmdTimeZone = "timezone"
 		if turnipPrice, err := strconv.Atoi(input); err == nil {
 			reactionEmoji, response = persistTurnipPrice(q, ctx, user, turnipPrice, reactionEmoji, response)
-		} else if strings.Contains(input, "history") {
+		} else if strings.Contains(input, CmdHistory) {
 			reactionEmoji, response = fetchUserPriceHistory(q, ctx, user, reactionEmoji, response)
 
-		} else if strings.HasPrefix(input, "timezone") {
-			timezoneInput := strings.TrimSpace(strings.Replace(input, "timezone", "", 1))
+		} else if strings.HasPrefix(input, CmdTimeZone) {
+			timezoneInput := strings.TrimSpace(strings.Replace(input, CmdTimeZone, "", 1))
 			_, err := time.LoadLocation(timezoneInput)
 			if err != nil {
 				reactionEmoji = "⛔"
@@ -116,6 +118,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				DiscordID: user.DiscordID,
 				TimeZone:  timezoneInput,
 			})
+		} else if strings.HasPrefix(input, "help") {
+			response = fmt.Sprintf("`%s` - register a price for your the current time (defult timezone America/Chicago). Only one is allowed morning/afternoon each day\n"+
+				"`%s` - get the your price history for the week\n"+
+				"`%s` - set a timezone for yourself from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones\n",
+				fmt.Sprintf("%s 119", botMentionToken),
+				fmt.Sprintf("%s %s", botMentionToken, CmdHistory),
+				fmt.Sprintf("%s %s America/New_York", botMentionToken, CmdTimeZone),
+			)
 
 		} else {
 			response = "Wut?"

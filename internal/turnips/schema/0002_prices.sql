@@ -21,6 +21,7 @@ create index on prices (year, day_of_year, day_of_week);
 create unique index
     on prices
         (
+         discord_id,
          meridiem,
          day_of_week,
          day_of_year,

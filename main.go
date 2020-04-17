@@ -115,15 +115,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if strings.HasPrefix(input, CmdTimeZone) {
 			reactionEmoji, response = updateUsersTimeZone(input, CmdTimeZone, reactionEmoji, response, q, ctx, user)
 		} else if strings.HasPrefix(input, "help") {
-			response = fmt.Sprintf("`%s` - register a price for your the current time (defult timezone America/Chicago). Only one is allowed morning/afternoon each day\n"+
-				"`%s` - update existing reported price\n"+
-				"`%s` - get the your price history for the week\n"+
-				"`%s` - set a timezone for yourself from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones\n",
-				fmt.Sprintf("%s 119", botMentionToken),
-				fmt.Sprintf("%s update 110", botMentionToken),
-				fmt.Sprintf("%s %s", botMentionToken, CmdHistory),
-				fmt.Sprintf("%s %s America/New_York", botMentionToken, CmdTimeZone),
-			)
+			reactionEmoji, response = fetchHelpResponse(response, botMentionToken, CmdHistory, CmdTimeZone, reactionEmoji)
 
 		} else {
 			response = "Wut?"
@@ -136,6 +128,21 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func fetchHelpResponse(response string, botMentionToken string, CmdHistory string, CmdTimeZone string, reactionEmoji string) (string, string) {
+	response = fmt.Sprintf("`%s` - register a price for your the current time (defult timezone America/Chicago). Only one is allowed morning/afternoon each day\n"+
+		"`%s` - update existing reported price\n"+
+		"`%s` - get the your price history for the week\n"+
+		"`%s` - set a timezone for yourself from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones\n",
+		fmt.Sprintf("%s 119", botMentionToken),
+		fmt.Sprintf("%s update 110", botMentionToken),
+		fmt.Sprintf("%s %s", botMentionToken, CmdHistory),
+		fmt.Sprintf("%s %s America/New_York", botMentionToken, CmdTimeZone),
+	)
+
+	reactionEmoji = "💁"
+	return reactionEmoji, response
 }
 
 func updateUsersTimeZone(input string, CmdTimeZone string, reactionEmoji string, response string, q *turnips.Queries, ctx context.Context, user turnips.User) (string, string) {

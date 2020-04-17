@@ -7,7 +7,7 @@ LIMIT 1;
 -- name: ListUsers :many
 SELECT *
 FROM users
-ORDER BY username;
+ORDER BY discord_id;
 
 -- name: CountUsersByDiscordId :one
 SELECT count(*)
@@ -15,8 +15,8 @@ FROM users
 where discord_id = $1;
 
 -- name: CreateUser :one
-INSERT INTO users (discord_id, username)
-VALUES ($1, $2)
+INSERT INTO users (discord_id)
+VALUES ($1)
 RETURNING *;
 
 -- name: UpdateFriendCode :one

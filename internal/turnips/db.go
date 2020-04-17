@@ -25,11 +25,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.countPricesByDiscordIdStmt, err = db.PrepareContext(ctx, countPricesByDiscordId); err != nil {
 		return nil, fmt.Errorf("error preparing query CountPricesByDiscordId: %w", err)
 	}
+	if q.countServerContextByDiscordIdStmt, err = db.PrepareContext(ctx, countServerContextByDiscordId); err != nil {
+		return nil, fmt.Errorf("error preparing query CountServerContextByDiscordId: %w", err)
+	}
 	if q.countUsersByDiscordIdStmt, err = db.PrepareContext(ctx, countUsersByDiscordId); err != nil {
 		return nil, fmt.Errorf("error preparing query CountUsersByDiscordId: %w", err)
 	}
 	if q.createPriceStmt, err = db.PrepareContext(ctx, createPrice); err != nil {
 		return nil, fmt.Errorf("error preparing query CreatePrice: %w", err)
+	}
+	if q.createServerContextStmt, err = db.PrepareContext(ctx, createServerContext); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateServerContext: %w", err)
 	}
 	if q.createUserStmt, err = db.PrepareContext(ctx, createUser); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateUser: %w", err)
@@ -37,17 +43,29 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deletePricesForUserStmt, err = db.PrepareContext(ctx, deletePricesForUser); err != nil {
 		return nil, fmt.Errorf("error preparing query DeletePricesForUser: %w", err)
 	}
+	if q.deleteServerContextStmt, err = db.PrepareContext(ctx, deleteServerContext); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteServerContext: %w", err)
+	}
 	if q.deleteUserStmt, err = db.PrepareContext(ctx, deleteUser); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteUser: %w", err)
 	}
+	if q.getServerContextStmt, err = db.PrepareContext(ctx, getServerContext); err != nil {
+		return nil, fmt.Errorf("error preparing query GetServerContext: %w", err)
+	}
 	if q.getUsersStmt, err = db.PrepareContext(ctx, getUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUsers: %w", err)
+	}
+	if q.getWeeksPriceHistoryByServerStmt, err = db.PrepareContext(ctx, getWeeksPriceHistoryByServer); err != nil {
+		return nil, fmt.Errorf("error preparing query GetWeeksPriceHistoryByServer: %w", err)
 	}
 	if q.getWeeksPriceHistoryByUserStmt, err = db.PrepareContext(ctx, getWeeksPriceHistoryByUser); err != nil {
 		return nil, fmt.Errorf("error preparing query GetWeeksPriceHistoryByUser: %w", err)
 	}
 	if q.listPricesStmt, err = db.PrepareContext(ctx, listPrices); err != nil {
 		return nil, fmt.Errorf("error preparing query ListPrices: %w", err)
+	}
+	if q.listServerContextStmt, err = db.PrepareContext(ctx, listServerContext); err != nil {
+		return nil, fmt.Errorf("error preparing query ListServerContext: %w", err)
 	}
 	if q.listUsersStmt, err = db.PrepareContext(ctx, listUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query ListUsers: %w", err)
@@ -61,6 +79,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.updateTimeZoneStmt, err = db.PrepareContext(ctx, updateTimeZone); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateTimeZone: %w", err)
 	}
+	if q.updateUsernameStmt, err = db.PrepareContext(ctx, updateUsername); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateUsername: %w", err)
+	}
 	return &q, nil
 }
 
@@ -69,6 +90,11 @@ func (q *Queries) Close() error {
 	if q.countPricesByDiscordIdStmt != nil {
 		if cerr := q.countPricesByDiscordIdStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing countPricesByDiscordIdStmt: %w", cerr)
+		}
+	}
+	if q.countServerContextByDiscordIdStmt != nil {
+		if cerr := q.countServerContextByDiscordIdStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countServerContextByDiscordIdStmt: %w", cerr)
 		}
 	}
 	if q.countUsersByDiscordIdStmt != nil {
@@ -81,6 +107,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createPriceStmt: %w", cerr)
 		}
 	}
+	if q.createServerContextStmt != nil {
+		if cerr := q.createServerContextStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createServerContextStmt: %w", cerr)
+		}
+	}
 	if q.createUserStmt != nil {
 		if cerr := q.createUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createUserStmt: %w", cerr)
@@ -91,14 +122,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deletePricesForUserStmt: %w", cerr)
 		}
 	}
+	if q.deleteServerContextStmt != nil {
+		if cerr := q.deleteServerContextStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteServerContextStmt: %w", cerr)
+		}
+	}
 	if q.deleteUserStmt != nil {
 		if cerr := q.deleteUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteUserStmt: %w", cerr)
 		}
 	}
+	if q.getServerContextStmt != nil {
+		if cerr := q.getServerContextStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getServerContextStmt: %w", cerr)
+		}
+	}
 	if q.getUsersStmt != nil {
 		if cerr := q.getUsersStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUsersStmt: %w", cerr)
+		}
+	}
+	if q.getWeeksPriceHistoryByServerStmt != nil {
+		if cerr := q.getWeeksPriceHistoryByServerStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getWeeksPriceHistoryByServerStmt: %w", cerr)
 		}
 	}
 	if q.getWeeksPriceHistoryByUserStmt != nil {
@@ -109,6 +155,11 @@ func (q *Queries) Close() error {
 	if q.listPricesStmt != nil {
 		if cerr := q.listPricesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listPricesStmt: %w", cerr)
+		}
+	}
+	if q.listServerContextStmt != nil {
+		if cerr := q.listServerContextStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listServerContextStmt: %w", cerr)
 		}
 	}
 	if q.listUsersStmt != nil {
@@ -129,6 +180,11 @@ func (q *Queries) Close() error {
 	if q.updateTimeZoneStmt != nil {
 		if cerr := q.updateTimeZoneStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateTimeZoneStmt: %w", cerr)
+		}
+	}
+	if q.updateUsernameStmt != nil {
+		if cerr := q.updateUsernameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateUsernameStmt: %w", cerr)
 		}
 	}
 	return err
@@ -168,39 +224,53 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                             DBTX
-	tx                             *sql.Tx
-	countPricesByDiscordIdStmt     *sql.Stmt
-	countUsersByDiscordIdStmt      *sql.Stmt
-	createPriceStmt                *sql.Stmt
-	createUserStmt                 *sql.Stmt
-	deletePricesForUserStmt        *sql.Stmt
-	deleteUserStmt                 *sql.Stmt
-	getUsersStmt                   *sql.Stmt
-	getWeeksPriceHistoryByUserStmt *sql.Stmt
-	listPricesStmt                 *sql.Stmt
-	listUsersStmt                  *sql.Stmt
-	updateFriendCodeStmt           *sql.Stmt
-	updatePriceStmt                *sql.Stmt
-	updateTimeZoneStmt             *sql.Stmt
+	db                                DBTX
+	tx                                *sql.Tx
+	countPricesByDiscordIdStmt        *sql.Stmt
+	countServerContextByDiscordIdStmt *sql.Stmt
+	countUsersByDiscordIdStmt         *sql.Stmt
+	createPriceStmt                   *sql.Stmt
+	createServerContextStmt           *sql.Stmt
+	createUserStmt                    *sql.Stmt
+	deletePricesForUserStmt           *sql.Stmt
+	deleteServerContextStmt           *sql.Stmt
+	deleteUserStmt                    *sql.Stmt
+	getServerContextStmt              *sql.Stmt
+	getUsersStmt                      *sql.Stmt
+	getWeeksPriceHistoryByServerStmt  *sql.Stmt
+	getWeeksPriceHistoryByUserStmt    *sql.Stmt
+	listPricesStmt                    *sql.Stmt
+	listServerContextStmt             *sql.Stmt
+	listUsersStmt                     *sql.Stmt
+	updateFriendCodeStmt              *sql.Stmt
+	updatePriceStmt                   *sql.Stmt
+	updateTimeZoneStmt                *sql.Stmt
+	updateUsernameStmt                *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                             tx,
-		tx:                             tx,
-		countPricesByDiscordIdStmt:     q.countPricesByDiscordIdStmt,
-		countUsersByDiscordIdStmt:      q.countUsersByDiscordIdStmt,
-		createPriceStmt:                q.createPriceStmt,
-		createUserStmt:                 q.createUserStmt,
-		deletePricesForUserStmt:        q.deletePricesForUserStmt,
-		deleteUserStmt:                 q.deleteUserStmt,
-		getUsersStmt:                   q.getUsersStmt,
-		getWeeksPriceHistoryByUserStmt: q.getWeeksPriceHistoryByUserStmt,
-		listPricesStmt:                 q.listPricesStmt,
-		listUsersStmt:                  q.listUsersStmt,
-		updateFriendCodeStmt:           q.updateFriendCodeStmt,
-		updatePriceStmt:                q.updatePriceStmt,
-		updateTimeZoneStmt:             q.updateTimeZoneStmt,
+		db:                                tx,
+		tx:                                tx,
+		countPricesByDiscordIdStmt:        q.countPricesByDiscordIdStmt,
+		countServerContextByDiscordIdStmt: q.countServerContextByDiscordIdStmt,
+		countUsersByDiscordIdStmt:         q.countUsersByDiscordIdStmt,
+		createPriceStmt:                   q.createPriceStmt,
+		createServerContextStmt:           q.createServerContextStmt,
+		createUserStmt:                    q.createUserStmt,
+		deletePricesForUserStmt:           q.deletePricesForUserStmt,
+		deleteServerContextStmt:           q.deleteServerContextStmt,
+		deleteUserStmt:                    q.deleteUserStmt,
+		getServerContextStmt:              q.getServerContextStmt,
+		getUsersStmt:                      q.getUsersStmt,
+		getWeeksPriceHistoryByServerStmt:  q.getWeeksPriceHistoryByServerStmt,
+		getWeeksPriceHistoryByUserStmt:    q.getWeeksPriceHistoryByUserStmt,
+		listPricesStmt:                    q.listPricesStmt,
+		listServerContextStmt:             q.listServerContextStmt,
+		listUsersStmt:                     q.listUsersStmt,
+		updateFriendCodeStmt:              q.updateFriendCodeStmt,
+		updatePriceStmt:                   q.updatePriceStmt,
+		updateTimeZoneStmt:                q.updateTimeZoneStmt,
+		updateUsernameStmt:                q.updateUsernameStmt,
 	}
 }

@@ -38,9 +38,15 @@ type Price struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type ServerContext struct {
+	ID        int64  `json:"id"`
+	ServerID  string `json:"server_id"`
+	Username  string `json:"username"`
+	DiscordID string `json:"discord_id"`
+}
+
 type User struct {
 	ID         int64          `json:"id"`
-	Username   string         `json:"username"`
 	DiscordID  string         `json:"discord_id"`
 	FriendCode sql.NullString `json:"friend_code"`
 	TimeZone   string         `json:"time_zone"`

@@ -5,6 +5,7 @@ package turnips
 
 import (
 	"context"
+	"time"
 )
 
 const countPricesByDiscordId = `-- name: CountPricesByDiscordId :one
@@ -67,6 +68,73 @@ WHERE discord_id = $1
 func (q *Queries) DeletePricesForUser(ctx context.Context, discordID string) error {
 	_, err := q.exec(ctx, q.deletePricesForUserStmt, deletePricesForUser, discordID)
 	return err
+}
+
+const getWeeksPriceHistoryByServer = `-- name: GetWeeksPriceHistoryByServer :many
+SELECT prices.id, prices.discord_id, price, meridiem, day_of_week, day_of_year, year, created_at, sc.id, server_id, username, sc.discord_id
+FROM prices
+         inner join server_context sc on prices.discord_id = sc.discord_id
+WHERE prices.discord_id = $1
+  and sc.server_id = $2
+  and day_of_year > extract(DOY FROM now()) - 7
+  and year = extract(year from now())
+order by day_of_year, meridiem
+`
+
+type GetWeeksPriceHistoryByServerParams struct {
+	DiscordID string `json:"discord_id"`
+	ServerID  string `json:"server_id"`
+}
+
+type GetWeeksPriceHistoryByServerRow struct {
+	ID          int64     `json:"id"`
+	DiscordID   string    `json:"discord_id"`
+	Price       int32     `json:"price"`
+	Meridiem    Meridiem  `json:"meridiem"`
+	DayOfWeek   int32     `json:"day_of_week"`
+	DayOfYear   int32     `json:"day_of_year"`
+	Year        int32     `json:"year"`
+	CreatedAt   time.Time `json:"created_at"`
+	ID_2        int64     `json:"id_2"`
+	ServerID    string    `json:"server_id"`
+	Username    string    `json:"username"`
+	DiscordID_2 string    `json:"discord_id_2"`
+}
+
+func (q *Queries) GetWeeksPriceHistoryByServer(ctx context.Context, arg GetWeeksPriceHistoryByServerParams) ([]GetWeeksPriceHistoryByServerRow, error) {
+	rows, err := q.query(ctx, q.getWeeksPriceHistoryByServerStmt, getWeeksPriceHistoryByServer, arg.DiscordID, arg.ServerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWeeksPriceHistoryByServerRow
+	for rows.Next() {
+		var i GetWeeksPriceHistoryByServerRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DiscordID,
+			&i.Price,
+			&i.Meridiem,
+			&i.DayOfWeek,
+			&i.DayOfYear,
+			&i.Year,
+			&i.CreatedAt,
+			&i.ID_2,
+			&i.ServerID,
+			&i.Username,
+			&i.DiscordID_2,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getWeeksPriceHistoryByUser = `-- name: GetWeeksPriceHistoryByUser :many

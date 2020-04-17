@@ -8,18 +8,25 @@ import (
 
 type Querier interface {
 	CountPricesByDiscordId(ctx context.Context, discordID string) (int64, error)
+	CountServerContextByDiscordId(ctx context.Context, arg CountServerContextByDiscordIdParams) (int64, error)
 	CountUsersByDiscordId(ctx context.Context, discordID string) (int64, error)
 	CreatePrice(ctx context.Context, arg CreatePriceParams) (Price, error)
-	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateServerContext(ctx context.Context, arg CreateServerContextParams) (ServerContext, error)
+	CreateUser(ctx context.Context, discordID string) (User, error)
 	DeletePricesForUser(ctx context.Context, discordID string) error
+	DeleteServerContext(ctx context.Context, discordID string) error
 	DeleteUser(ctx context.Context, discordID string) error
+	GetServerContext(ctx context.Context, discordID string) (ServerContext, error)
 	GetUsers(ctx context.Context, discordID string) (User, error)
+	GetWeeksPriceHistoryByServer(ctx context.Context, arg GetWeeksPriceHistoryByServerParams) ([]GetWeeksPriceHistoryByServerRow, error)
 	GetWeeksPriceHistoryByUser(ctx context.Context, discordID string) ([]Price, error)
 	ListPrices(ctx context.Context) ([]Price, error)
+	ListServerContext(ctx context.Context) ([]ServerContext, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	UpdateFriendCode(ctx context.Context, arg UpdateFriendCodeParams) (User, error)
 	UpdatePrice(ctx context.Context, arg UpdatePriceParams) (Price, error)
 	UpdateTimeZone(ctx context.Context, arg UpdateTimeZoneParams) (User, error)
+	UpdateUsername(ctx context.Context, arg UpdateUsernameParams) (ServerContext, error)
 }
 
 var _ Querier = (*Queries)(nil)

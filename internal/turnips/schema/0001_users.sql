@@ -2,7 +2,6 @@ drop table if exists users cascade;
 CREATE TABLE users
 (
     id          BIGSERIAL PRIMARY KEY,
-    username    text        NOT NULL,
     discord_id  text unique not null,
     friend_code text,
     time_zone   text        not null default 'America/Chicago'

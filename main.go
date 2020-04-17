@@ -95,6 +95,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 		existingUserCount, err := q.CountUsersByDiscordId(ctx, m.Author.ID)
 		if err != nil {
+			log.Println(err)
 			response = "Nice work! You broke the one thing that made people happy."
 			reactionEmoji = "🔥"
 			flushEmojiAndResponseToDiscord(s, m, reactionEmoji, response)

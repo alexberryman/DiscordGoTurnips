@@ -1,13 +1,13 @@
 package main
 
 import (
-	"DisGoNips/internal/turnips"
+	"DiscordGoTurnips/internal/turnips"
 	"context"
 	"database/sql"
-	"flag"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/lib/pq"
+	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -18,28 +18,26 @@ import (
 
 // Variables used for command line parameters
 var (
-	Token string
+	Token       string
+	DatabaseUrl string
 )
 
 var db *sql.DB
 
 func init() {
-	flag.StringVar(&Token, "t", "", "Bot Token")
-	flag.Parse()
+	Token = os.Getenv("DISCORD_TOKEN")
+	if Token == "" {
+		log.Fatal("DISCORD_TOKEN must be set")
+	}
 
-	pgUser := os.Getenv("POSTGRES_USER")
-	pgHost := os.Getenv("POSTGRES_HOST")
-	pgPort := os.Getenv("POSTGRES_PORT")
-	pgPass := os.Getenv("POSTGRES_PASSWORD")
-	pgDB := os.Getenv("POSTGRES_DB")
+	DatabaseUrl = os.Getenv("DATABASE_URL")
+	if DatabaseUrl == "" {
+		log.Fatal("DatabaseUrl must be set")
+	}
 
-	source := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", pgUser, pgPass, pgHost, pgPort, pgDB)
-
-	dbConnection, err := sql.Open("postgres", source)
+	dbConnection, err := sql.Open("postgres", DatabaseUrl)
 	if err != nil {
-		fmt.Println("Cannot connect to database:")
-		fmt.Println(err)
-		os.Exit(137)
+		log.Fatal("Cannot connect to database:", err)
 	}
 
 	db = dbConnection
@@ -49,8 +47,7 @@ func main() {
 	// Create a new Discord session using the provided bot token.
 	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
-		fmt.Println("error creating Discord session,", err)
-		return
+		log.Fatal("error creating Discord session,", err)
 	}
 
 	// Register the messageCreate func as a callback for MessageCreate events.
@@ -59,18 +56,17 @@ func main() {
 	// Open a websocket connection to Discord and begin listening.
 	err = dg.Open()
 	if err != nil {
-		fmt.Println("error opening connection,", err)
-		return
+		log.Fatal("error opening connection,", err)
 	}
 
 	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	log.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
 
 	// Cleanly close down the Discord session.
-	dg.Close()
+	_ = dg.Close()
 }
 
 // This function will be called (due to AddHandler above) every time a new
@@ -84,18 +80,29 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	tokenizedContent, err := m.ContentWithMoreMentionsReplaced(s)
+	if err != nil {
+		log.Println("Failed to replace mentions:", err)
+		return
+	}
+
 	botMentionToken := fmt.Sprintf("@%s", botName)
 	if strings.HasPrefix(tokenizedContent, botMentionToken) {
 		input := strings.TrimSpace(strings.Replace(tokenizedContent, botMentionToken, "", 1))
 		q := turnips.New(db)
 		ctx := context.Background()
+		var response string
+		reactionEmoji := "❌"
 
-		existingUserCount, _ := q.CountUsersByDiscordId(ctx, m.Author.ID)
+		existingUserCount, err := q.CountUsersByDiscordId(ctx, m.Author.ID)
+		if err != nil {
+			response = "Nice work! You broke the one thing that made people happy."
+			reactionEmoji = "🔥"
+			flushEmojiAndResponseToDiscord(s, m, reactionEmoji, response)
+			return
+		}
 
 		user := getOrCreateUser(s, m, existingUserCount, q, ctx)
 
-		var response string
-		reactionEmoji := "❌"
 		const CmdHistory = "history"
 		const CmdTimeZone = "timezone"
 		if turnipPrice, err := strconv.Atoi(input); err == nil {
@@ -121,12 +128,26 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			response = "Wut?"
 		}
 
-		s.MessageReactionAdd(m.ChannelID, m.Message.ID, reactionEmoji)
-		s.ChannelMessageSend(m.ChannelID, response)
+		flushEmojiAndResponseToDiscord(s, m, reactionEmoji, response)
 	}
+}
 
+func flushEmojiAndResponseToDiscord(s *discordgo.Session, m *discordgo.MessageCreate, reactionEmoji string, response string) {
+	reactToMessage(s, m, reactionEmoji)
+	respondAsNewMessage(s, m, response)
+}
+
+func respondAsNewMessage(s *discordgo.Session, m *discordgo.MessageCreate, response string) {
+	_, err := s.ChannelMessageSend(m.ChannelID, response)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("Error responding:", err)
+	}
+}
+
+func reactToMessage(s *discordgo.Session, m *discordgo.MessageCreate, reactionEmoji string) {
+	err := s.MessageReactionAdd(m.ChannelID, m.Message.ID, reactionEmoji)
+	if err != nil {
+		log.Println("Error adding and emoji:", err)
 	}
 }
 
@@ -270,15 +291,13 @@ func getOrCreateUser(s *discordgo.Session, m *discordgo.MessageCreate, existingU
 	var user turnips.User
 	if existingUserCount > 0 {
 		user, _ = q.GetUsers(ctx, m.Author.ID)
-		fmt.Println("Found User", user)
-		s.MessageReactionAdd(m.ChannelID, m.Message.ID, "👤")
+		reactToMessage(s, m, "👤")
 	} else {
 		user, _ = q.CreateUser(ctx, turnips.CreateUserParams{
 			DiscordID: m.Author.ID,
 			Username:  m.Author.Username,
 		})
-		s.MessageReactionAdd(m.ChannelID, m.Message.ID, "🆕")
-		fmt.Println("Created User", user)
+		reactToMessage(s, m, "🆕")
 	}
 	return user
 }

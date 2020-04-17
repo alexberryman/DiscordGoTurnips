@@ -18,6 +18,16 @@
   ],
   "website": "https://github.com/alexberryman/DiscordGoTurnips",
   "repository": "https://github.com/alexberryman/DiscordGoTurnips",
+  "env": {
+    "DATABASE_URL": {
+      "description": "Full Postgres database URL with the schema created",
+      "generator": "secret"
+    },
+    "DISCORD_TOKEN": {
+      "description": "The Discord Build-A-Bot Token used by the bot to authenticate with Discord",
+      "value": "secret"
+    }
+  },
   "addons": [
     "heroku-postgresql"
   ],

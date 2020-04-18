@@ -353,11 +353,11 @@ func getOrCreateUser(s *discordgo.Session, m *discordgo.MessageCreate, existingU
 			DiscordID: m.Author.ID,
 			ServerID:  m.GuildID,
 		})
-		if serverContext.Username != m.Author.Username {
+		if serverContext.Username != m.Member.Nick {
 			var err error
 			serverContext, err = q.UpdateUsername(ctx, turnips.UpdateUsernameParams{
 				DiscordID: m.Author.ID,
-				Username:  m.Author.Username,
+				Username:  m.Member.Nick,
 				ServerID:  m.GuildID,
 			})
 			if err != nil {

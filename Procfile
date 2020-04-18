@@ -1,2 +1,2 @@
-bot: bin/DiscordGoTurnips
-bot-windows: bin\DiscordGoTurnips.exe
+bot: bin/bot
+bot-windows: bin\bot.exe

@@ -222,7 +222,7 @@ func fetchUserPriceHistory(q *turnips.Queries, ctx context.Context, user turnips
 	return reactionEmoji, response
 }
 
-func fetchServersPriceHistory(q *turnips.Queries, ctx context.Context, m *discordgo.MessageCreate, s *discordgo.Session) (string, string) {
+func fetchServersPriceHistory(q *turnips.Queries, ctx context.Context, m *discordgo.MessageCreate) (string, string) {
 	var reactionEmoji string
 	var response string
 

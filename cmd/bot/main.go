@@ -92,7 +92,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		ctx := context.Background()
 		var response string
 		reactionEmoji := "❌"
-		existingUserCount, err := q.CountUsersByDiscordId(ctx, m.Author.ID)
+		existingAccount, err := q.CountAccountsByDiscordId(ctx, m.Author.ID)
 		if err != nil {
 			log.Println(err)
 			response = "Nice work! You broke the one thing that made people happy."
@@ -101,7 +101,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 
-		existingServerContextCount, err := q.CountServerContextByDiscordId(ctx, turnips.CountServerContextByDiscordIdParams{
+		existingNickname, err := q.CountNicknameByDiscordId(ctx, turnips.CountNicknameByDiscordIdParams{
 			DiscordID: m.Author.ID,
 			ServerID:  m.GuildID,
 		})
@@ -113,17 +113,17 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 
-		user := getOrCreateUser(s, m, existingUserCount, existingServerContextCount, q, ctx)
+		account := getOrCreateAccount(s, m, existingAccount, existingNickname, q, ctx)
 
 		const CmdHistory = "history"
 		const CmdTimeZone = "timezone"
 		const CmdUpdate = "update"
 		if turnipPrice, err := strconv.Atoi(input); err == nil {
-			reactionEmoji, response = persistTurnipPrice(q, ctx, user, turnipPrice, reactionEmoji, response)
+			reactionEmoji, response = persistTurnipPrice(q, ctx, account, turnipPrice, reactionEmoji, response)
 		} else if strings.Contains(input, CmdHistory) {
 			historyInput := strings.TrimSpace(strings.Replace(input, CmdHistory, "", 1))
 			if historyInput == "" {
-				reactionEmoji, response = fetchUserPriceHistory(q, ctx, user, reactionEmoji, response)
+				reactionEmoji, response = fetchAccountPriceHistory(q, ctx, account, reactionEmoji, response)
 			} else if historyInput == "all" {
 				reactionEmoji, response = fetchServersPriceHistory(q, ctx, m)
 			} else {
@@ -134,14 +134,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if strings.Contains(input, CmdUpdate) {
 			updateInput := strings.TrimSpace(strings.Replace(input, CmdUpdate, "", 1))
 			if updateTurnipPrice, err := strconv.Atoi(updateInput); err == nil {
-				reactionEmoji, response = updateExistingTurnipPrice(q, ctx, user, updateTurnipPrice, reactionEmoji, response)
+				reactionEmoji, response = updateExistingTurnipPrice(q, ctx, account, updateTurnipPrice, reactionEmoji, response)
 			} else {
 				reactionEmoji = "⛔"
 				response = "That is not a valid price"
 			}
 
 		} else if strings.HasPrefix(input, CmdTimeZone) {
-			reactionEmoji, response = updateUsersTimeZone(input, CmdTimeZone, reactionEmoji, response, q, ctx, user)
+			reactionEmoji, response = updateAccountTimeZone(input, CmdTimeZone, reactionEmoji, response, q, ctx, account)
 		} else if strings.HasPrefix(input, "help") {
 			reactionEmoji, response = fetchHelpResponse(response, botMentionToken, CmdHistory, CmdTimeZone, reactionEmoji)
 
@@ -187,7 +187,7 @@ func fetchHelpResponse(response string, botMentionToken string, CmdHistory strin
 	return reactionEmoji, response
 }
 
-func updateUsersTimeZone(input string, CmdTimeZone string, reactionEmoji string, response string, q *turnips.Queries, ctx context.Context, user turnips.User) (string, string) {
+func updateAccountTimeZone(input string, CmdTimeZone string, reactionEmoji string, response string, q *turnips.Queries, ctx context.Context, a turnips.Account) (string, string) {
 	timezoneInput := strings.TrimSpace(strings.Replace(input, CmdTimeZone, "", 1))
 	_, err := time.LoadLocation(timezoneInput)
 	if err != nil {
@@ -199,14 +199,14 @@ func updateUsersTimeZone(input string, CmdTimeZone string, reactionEmoji string,
 	}
 
 	_, err = q.UpdateTimeZone(ctx, turnips.UpdateTimeZoneParams{
-		DiscordID: user.DiscordID,
+		DiscordID: a.DiscordID,
 		TimeZone:  timezoneInput,
 	})
 	return reactionEmoji, response
 }
 
-func fetchUserPriceHistory(q *turnips.Queries, ctx context.Context, user turnips.User, reactionEmoji string, response string) (string, string) {
-	prices, err := q.GetWeeksPriceHistoryByUser(ctx, user.DiscordID)
+func fetchAccountPriceHistory(q *turnips.Queries, ctx context.Context, a turnips.Account, reactionEmoji string, response string) (string, string) {
+	prices, err := q.GetWeeksPriceHistoryByAccount(ctx, a.DiscordID)
 	if err != nil {
 		reactionEmoji = "⛔"
 		response = fmt.Sprint(err)
@@ -236,33 +236,33 @@ func fetchServersPriceHistory(q *turnips.Queries, ctx context.Context, m *discor
 	priceMap := make(map[string][]int32)
 
 	for _, value := range prices {
-		if _, ok := priceMap[value.Username]; ok {
+		if _, ok := priceMap[value.Nickname]; ok {
 			//do something here
-			priceMap[value.Username] = append(priceMap[value.Username], value.Price)
+			priceMap[value.Nickname] = append(priceMap[value.Nickname], value.Price)
 		} else {
-			priceMap[value.Username] = []int32{value.Price}
+			priceMap[value.Nickname] = []int32{value.Price}
 		}
 	}
 
-	for username, prices := range priceMap {
-		response += fmt.Sprintf("%s: %v\n", username, prices)
+	for nickname, prices := range priceMap {
+		response += fmt.Sprintf("%s: %v\n", nickname, prices)
 	}
 
 	reactionEmoji = "✅"
 	return reactionEmoji, response
 }
 
-func persistTurnipPrice(q *turnips.Queries, ctx context.Context, user turnips.User, turnipPrice int, reactionEmoji string, response string) (string, string) {
+func persistTurnipPrice(q *turnips.Queries, ctx context.Context, a turnips.Account, turnipPrice int, reactionEmoji string, response string) (string, string) {
 
-	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(user, turnipPrice)
+	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
 	if err != nil {
 		return reactionEmoji, response
 	}
 
 	priceParams := turnips.CreatePriceParams{
-		DiscordID: user.DiscordID,
+		DiscordID: a.DiscordID,
 		Price:     turnipPriceObj.Price,
-		Meridiem:  turnipPriceObj.Meridiem,
+		AmPm:      turnipPriceObj.AmPm,
 		DayOfWeek: turnipPriceObj.DayOfWeek,
 		DayOfYear: turnipPriceObj.DayOfYear,
 		Year:      turnipPriceObj.Year,
@@ -279,17 +279,17 @@ func persistTurnipPrice(q *turnips.Queries, ctx context.Context, user turnips.Us
 	return reactionEmoji, response
 }
 
-func updateExistingTurnipPrice(q *turnips.Queries, ctx context.Context, user turnips.User, turnipPrice int, reactionEmoji string, response string) (string, string) {
+func updateExistingTurnipPrice(q *turnips.Queries, ctx context.Context, a turnips.Account, turnipPrice int, reactionEmoji string, response string) (string, string) {
 
-	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(user, turnipPrice)
+	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
 	if err != nil {
 		return reactionEmoji, response
 	}
 
 	priceParams := turnips.UpdatePriceParams{
-		DiscordID: user.DiscordID,
+		DiscordID: a.DiscordID,
 		Price:     turnipPriceObj.Price,
-		Meridiem:  turnipPriceObj.Meridiem,
+		AmPm:      turnipPriceObj.AmPm,
 		DayOfWeek: turnipPriceObj.DayOfWeek,
 		DayOfYear: turnipPriceObj.DayOfYear,
 		Year:      turnipPriceObj.Year,
@@ -306,77 +306,77 @@ func updateExistingTurnipPrice(q *turnips.Queries, ctx context.Context, user tur
 	return reactionEmoji, response
 }
 
-func buildPriceObjFromInput(user turnips.User, turnipPrice int) (error, string, string, turnips.Price) {
-	usersTimeZone, err := time.LoadLocation(user.TimeZone)
+func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, string, string, turnips.TurnipPrice) {
+	accountTimeZone, err := time.LoadLocation(a.TimeZone)
 	var reactionEmoji string
 	var response string
 	if err != nil {
 		reactionEmoji := "⛔"
 		response := "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
-		return err, reactionEmoji, response, turnips.Price{}
+		return err, reactionEmoji, response, turnips.TurnipPrice{}
 	}
 
-	localTime := time.Now().In(usersTimeZone)
-	var meridiem turnips.Meridiem
+	localTime := time.Now().In(accountTimeZone)
+	var meridiem turnips.AmPm
 	switch fmt.Sprint(localTime.Format("pm")) {
 	case "am":
-		meridiem = turnips.MeridiemAm
+		meridiem = turnips.AmPmAm
 	case "pm":
-		meridiem = turnips.MeridiemPm
+		meridiem = turnips.AmPmPm
 	}
 
-	priceThing := turnips.Price{
-		DiscordID: user.DiscordID,
+	priceThing := turnips.TurnipPrice{
+		DiscordID: a.DiscordID,
 		Price:     int32(turnipPrice),
-		Meridiem:  meridiem,
+		AmPm:      meridiem,
 		DayOfWeek: int32(localTime.Weekday()),
 		DayOfYear: int32(localTime.YearDay()),
 		Year:      int32(localTime.Year()),
 	}
-	priceThing.Meridiem = meridiem
+	priceThing.AmPm = meridiem
 
 	return err, reactionEmoji, response, priceThing
 }
 
-func getOrCreateUser(s *discordgo.Session, m *discordgo.MessageCreate, existingUserCount int64, existingServerContextCount int64, q *turnips.Queries, ctx context.Context) turnips.User {
-	var user turnips.User
-	var serverContext turnips.ServerContext
-	if existingUserCount > 0 {
-		user, _ = q.GetUsers(ctx, m.Author.ID)
+func getOrCreateAccount(s *discordgo.Session, m *discordgo.MessageCreate, existingAccount int64, existingNickname int64, q *turnips.Queries, ctx context.Context) turnips.Account {
+	var account turnips.Account
+	var nickname turnips.Nickname
+	if existingAccount > 0 {
+		account, _ = q.GetAccount(ctx, m.Author.ID)
 		reactToMessage(s, m, "👤")
 	} else {
-		user, _ = q.CreateUser(ctx, m.Author.ID)
+		account, _ = q.CreateAccount(ctx, m.Author.ID)
 		reactToMessage(s, m, "🆕")
 	}
-	if existingServerContextCount > 0 {
-		serverContext, _ = q.GetServerContext(ctx, turnips.GetServerContextParams{
+	if existingNickname > 0 {
+		nickname, _ = q.GetNickname(ctx, turnips.GetNicknameParams{
 			DiscordID: m.Author.ID,
 			ServerID:  m.GuildID,
 		})
-		if serverContext.Username != m.Member.Nick {
+		if nickname.Nickname != m.Member.Nick {
 			var err error
-			serverContext, err = q.UpdateUsername(ctx, turnips.UpdateUsernameParams{
+			nickname, err = q.UpdateNickname(ctx, turnips.UpdateNicknameParams{
 				DiscordID: m.Author.ID,
-				Username:  m.Member.Nick,
+				Nickname:  m.Member.Nick,
 				ServerID:  m.GuildID,
 			})
 			if err != nil {
-				log.Println("Failed to update username")
+				log.Println("Failed to update nickname")
 			} else {
 				reactToMessage(s, m, "🔁")
 			}
 		}
 
 	} else {
-		serverContext, _ = q.CreateServerContext(ctx, turnips.CreateServerContextParams{
+		nickname, _ = q.CreateNickname(ctx, turnips.CreateNicknameParams{
 			DiscordID: m.Author.ID,
 			ServerID:  m.GuildID,
-			Username:  m.Author.Username,
+			Nickname:  m.Member.Nick,
 		})
 
 		reactToMessage(s, m, "🆕")
 	}
-	return user
+	return account
 }
 
 func turnipPriceColorfulResponse(reactionEmoji string, turnipPrice int, response string) (string, string) {

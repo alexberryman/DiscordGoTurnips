@@ -3,51 +3,47 @@
 package turnips
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 )
 
-type Meridiem string
+type AmPm string
 
 const (
-	MeridiemAm Meridiem = "am"
-	MeridiemPm Meridiem = "pm"
+	AmPmAm AmPm = "am"
+	AmPmPm AmPm = "pm"
 )
 
-func (e *Meridiem) Scan(src interface{}) error {
+func (e *AmPm) Scan(src interface{}) error {
 	switch s := src.(type) {
 	case []byte:
-		*e = Meridiem(s)
+		*e = AmPm(s)
 	case string:
-		*e = Meridiem(s)
+		*e = AmPm(s)
 	default:
-		return fmt.Errorf("unsupported scan type for Meridiem: %T", src)
+		return fmt.Errorf("unsupported scan type for AmPm: %T", src)
 	}
 	return nil
 }
 
-type Price struct {
+type Account struct {
+	DiscordID string `json:"discord_id"`
+	TimeZone  string `json:"time_zone"`
+}
+
+type Nickname struct {
+	DiscordID string `json:"discord_id"`
+	ServerID  string `json:"server_id"`
+	Nickname  string `json:"nickname"`
+}
+
+type TurnipPrice struct {
 	ID        int64     `json:"id"`
 	DiscordID string    `json:"discord_id"`
 	Price     int32     `json:"price"`
-	Meridiem  Meridiem  `json:"meridiem"`
+	AmPm      AmPm      `json:"am_pm"`
 	DayOfWeek int32     `json:"day_of_week"`
 	DayOfYear int32     `json:"day_of_year"`
 	Year      int32     `json:"year"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-type ServerContext struct {
-	ID        int64  `json:"id"`
-	ServerID  string `json:"server_id"`
-	Username  string `json:"username"`
-	DiscordID string `json:"discord_id"`
-}
-
-type User struct {
-	ID         int64          `json:"id"`
-	DiscordID  string         `json:"discord_id"`
-	FriendCode sql.NullString `json:"friend_code"`
-	TimeZone   string         `json:"time_zone"`
 }

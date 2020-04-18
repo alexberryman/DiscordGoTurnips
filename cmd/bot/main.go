@@ -1,7 +1,7 @@
 package main
 
 import (
-	"DiscordGoTurnips/internal/turnips"
+	"DiscordGoTurnips/internal/turnips/generated-code"
 	"context"
 	"database/sql"
 	"fmt"

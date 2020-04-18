@@ -3,7 +3,7 @@
   "version": "1",
   "packages": [
     {
-      "path": ".",
+      "path": "generated-code",
       "name": "turnips",
       "schema": "schema",
       "queries": "query",

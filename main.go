@@ -92,7 +92,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		ctx := context.Background()
 		var response string
 		reactionEmoji := "❌"
-
 		existingUserCount, err := q.CountUsersByDiscordId(ctx, m.Author.ID)
 		if err != nil {
 			log.Println(err)
@@ -126,7 +125,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if historyInput == "" {
 				reactionEmoji, response = fetchUserPriceHistory(q, ctx, user, reactionEmoji, response)
 			} else if historyInput == "all" {
-				reactionEmoji, response = fetchServersPriceHistory(q, ctx, user, m, reactionEmoji, response)
+				reactionEmoji, response = fetchServersPriceHistory(q, ctx, user, m, s)
 			} else {
 				reactionEmoji = "⛔"
 				response = "That is not a valid history request"
@@ -223,22 +222,32 @@ func fetchUserPriceHistory(q *turnips.Queries, ctx context.Context, user turnips
 	return reactionEmoji, response
 }
 
-func fetchServersPriceHistory(q *turnips.Queries, ctx context.Context, user turnips.User, m *discordgo.MessageCreate, reactionEmoji string, response string) (string, string) {
-	prices, err := q.GetWeeksPriceHistoryByServer(ctx, turnips.GetWeeksPriceHistoryByServerParams{
-		DiscordID: user.DiscordID,
-		ServerID:  m.GuildID,
-	})
+func fetchServersPriceHistory(q *turnips.Queries, ctx context.Context, user turnips.User, m *discordgo.MessageCreate, s *discordgo.Session) (string, string) {
+	var reactionEmoji string
+	var response string
+
+	prices, err := q.GetWeeksPriceHistoryByServer(ctx, m.GuildID)
+
 	if err != nil {
 		reactionEmoji = "⛔"
 		response = fmt.Sprint(err)
 	}
+	response = ""
+	priceMap := make(map[string][]int32)
 
-	var priceList []int32
-	for _, price := range prices {
-		priceList = append(priceList, price.Price)
+	for _, value := range prices {
+		if _, ok := priceMap[value.Username]; ok {
+			//do something here
+			priceMap[value.Username] = append(priceMap[value.Username], value.Price)
+		} else {
+			priceMap[value.Username] = []int32{value.Price}
+		}
 	}
 
-	response = fmt.Sprint(priceList)
+	for username, prices := range priceMap {
+		response += fmt.Sprintf("%s: %v\n", username, prices)
+	}
+
 	reactionEmoji = "✅"
 	return reactionEmoji, response
 }
@@ -340,7 +349,10 @@ func getOrCreateUser(s *discordgo.Session, m *discordgo.MessageCreate, existingU
 		reactToMessage(s, m, "🆕")
 	}
 	if existingServerContextCount > 0 {
-		serverContext, _ = q.GetServerContext(ctx, m.Author.ID)
+		serverContext, _ = q.GetServerContext(ctx, turnips.GetServerContextParams{
+			DiscordID: m.Author.ID,
+			ServerID:  m.GuildID,
+		})
 		if serverContext.Username != m.Author.Username {
 			var err error
 			serverContext, err = q.UpdateUsername(ctx, turnips.UpdateUsernameParams{
@@ -350,10 +362,11 @@ func getOrCreateUser(s *discordgo.Session, m *discordgo.MessageCreate, existingU
 			})
 			if err != nil {
 				log.Println("Failed to update username")
+			} else {
+				reactToMessage(s, m, "🔁")
 			}
 		}
 
-		reactToMessage(s, m, "🔁")
 	} else {
 		serverContext, _ = q.CreateServerContext(ctx, turnips.CreateServerContextParams{
 			DiscordID: m.Author.ID,

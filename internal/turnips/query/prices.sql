@@ -10,8 +10,7 @@ order by day_of_year, meridiem;
 SELECT *
 FROM prices
          inner join server_context sc on prices.discord_id = sc.discord_id
-WHERE prices.discord_id = $1
-  and sc.server_id = $2
+WHERE sc.server_id = $1
   and day_of_year > extract(DOY FROM now()) - 7
   and year = extract(year from now())
 order by day_of_year, meridiem;

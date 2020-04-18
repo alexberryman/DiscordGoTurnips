@@ -65,11 +65,17 @@ const getServerContext = `-- name: GetServerContext :one
 SELECT id, server_id, username, discord_id
 FROM server_context
 WHERE discord_id = $1
+and server_id = $2
 LIMIT 1
 `
 
-func (q *Queries) GetServerContext(ctx context.Context, discordID string) (ServerContext, error) {
-	row := q.queryRow(ctx, q.getServerContextStmt, getServerContext, discordID)
+type GetServerContextParams struct {
+	DiscordID string `json:"discord_id"`
+	ServerID  string `json:"server_id"`
+}
+
+func (q *Queries) GetServerContext(ctx context.Context, arg GetServerContextParams) (ServerContext, error) {
+	row := q.queryRow(ctx, q.getServerContextStmt, getServerContext, arg.DiscordID, arg.ServerID)
 	var i ServerContext
 	err := row.Scan(
 		&i.ID,

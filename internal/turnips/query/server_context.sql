@@ -2,6 +2,7 @@
 SELECT *
 FROM server_context
 WHERE discord_id = $1
+and server_id = $2
 LIMIT 1;
 
 -- name: ListServerContext :many

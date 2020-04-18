@@ -16,9 +16,9 @@ type Querier interface {
 	DeletePricesForUser(ctx context.Context, discordID string) error
 	DeleteServerContext(ctx context.Context, discordID string) error
 	DeleteUser(ctx context.Context, discordID string) error
-	GetServerContext(ctx context.Context, discordID string) (ServerContext, error)
+	GetServerContext(ctx context.Context, arg GetServerContextParams) (ServerContext, error)
 	GetUsers(ctx context.Context, discordID string) (User, error)
-	GetWeeksPriceHistoryByServer(ctx context.Context, arg GetWeeksPriceHistoryByServerParams) ([]GetWeeksPriceHistoryByServerRow, error)
+	GetWeeksPriceHistoryByServer(ctx context.Context, serverID string) ([]GetWeeksPriceHistoryByServerRow, error)
 	GetWeeksPriceHistoryByUser(ctx context.Context, discordID string) ([]Price, error)
 	ListPrices(ctx context.Context) ([]Price, error)
 	ListServerContext(ctx context.Context) ([]ServerContext, error)

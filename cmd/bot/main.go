@@ -125,7 +125,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if historyInput == "" {
 				reactionEmoji, response = fetchUserPriceHistory(q, ctx, user, reactionEmoji, response)
 			} else if historyInput == "all" {
-				reactionEmoji, response = fetchServersPriceHistory(q, ctx, m, s)
+				reactionEmoji, response = fetchServersPriceHistory(q, ctx, m)
 			} else {
 				reactionEmoji = "⛔"
 				response = "That is not a valid history request"

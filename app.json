@@ -31,6 +31,13 @@
   "addons": [
     "heroku-postgresql"
   ],
+  "environments": {
+    "review": {
+      "addons": [
+        "heroku-postgresql:hobby-dev"
+      ]
+    }
+  },
   "formation": {
     "bot": {
       "quantity": 1

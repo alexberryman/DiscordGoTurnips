@@ -1,7 +1,7 @@
 -- +migrate Up
 create table nicknames
 (
-    discord_id text not null references users (discord_id),
+    discord_id text not null references accounts (discord_id),
     server_id  text not null,
     nickname   text not null,
     primary key (discord_id,server_id)

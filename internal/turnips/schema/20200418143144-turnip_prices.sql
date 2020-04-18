@@ -4,7 +4,7 @@ create type  am_pm as ENUM ('am', 'pm');
 CREATE TABLE turnip_prices
 (
     id          BIGSERIAL PRIMARY KEY,
-    discord_id  text      NOT NULL references users (discord_id),
+    discord_id  text      NOT NULL references accounts (discord_id),
     price       int       not null,
     am_pm    am_pm  not null,
     day_of_week int       not null,

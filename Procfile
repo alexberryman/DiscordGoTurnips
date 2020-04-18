@@ -1,3 +1,3 @@
 bot: bin/bot
 bot-windows: bin\bot.exe
-release: sql-migrate up
+release: go get -v github.com/rubenv/sql-migrate/... && sql-migrate up

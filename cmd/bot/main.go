@@ -126,6 +126,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				reactionEmoji, response = fetchAccountPriceHistory(q, ctx, account, reactionEmoji, response)
 			} else if historyInput == "all" {
 				reactionEmoji, response = fetchServersPriceHistory(q, ctx, m)
+			} else if historyInput == "chart" {
+				reactionEmoji, response = linkServersPriceChart(m)
 			} else {
 				reactionEmoji = "⛔"
 				response = "That is not a valid history request"
@@ -249,6 +251,22 @@ func fetchServersPriceHistory(q *turnips.Queries, ctx context.Context, m *discor
 	}
 
 	reactionEmoji = "✅"
+	return reactionEmoji, response
+}
+
+func linkServersPriceChart(m *discordgo.MessageCreate) (string, string) {
+	var response string
+	var reactionEmoji string
+	domain := os.Getenv("CUSTOM_DOMAIN")
+	if domain == "" {
+		domain := os.Getenv("HEROKU_APP_NAME")
+		if domain == "" {
+			response = "No domain name can be found"
+			reactionEmoji = "🆘"
+		}
+	}
+	response = fmt.Sprintf("%s/%s", domain, m.GuildID)
+	reactionEmoji = "🔗"
 	return reactionEmoji, response
 }
 

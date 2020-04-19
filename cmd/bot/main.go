@@ -176,7 +176,7 @@ func fetchHelpResponse(response string, botMentionToken string, CmdHistory strin
 	response = fmt.Sprintf("`%s` - register a price for your the current time (defult timezone America/Chicago). Only one is allowed morning/afternoon each day\n"+
 		"`%s` - update existing reported price\n"+
 		"`%s` - get the your price history for the week\n"+
-		"`%s` - set a timezone for yourself from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones\n",
+		"`%s` - set yout local timezone\n",
 		fmt.Sprintf("%s 119", botMentionToken),
 		fmt.Sprintf("%s update 110", botMentionToken),
 		fmt.Sprintf("%s %s", botMentionToken, CmdHistory),

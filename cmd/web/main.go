@@ -190,6 +190,7 @@ func renderSharpLine(w http.ResponseWriter, periods []string, serverID string, p
 }
 
 func main() {
+	http.HandleFunc("/favicon.ico", nil)
 	http.HandleFunc("/", handler)
 	log.Println("Run server at " + os.Getenv("CUSTOM_DOMAIN") + ":" + os.Getenv("PORT"))
 	err := http.ListenAndServe(":"+port, nil)

@@ -40,7 +40,6 @@ func init() {
 	if err != nil {
 		log.Fatal("Cannot connect to database:", err)
 	}
-	log.Println("connected to database with: ", DatabaseUrl)
 
 	db = dbConnection
 
@@ -57,13 +56,14 @@ type dailyPrice struct {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	log.Println("inside handle for: r", r.URL.RequestURI())
 	periods := []string{"Mon am", "Mon pm", "Tue am", "Tue pm", "Wed am", "Wed pm", "Thu am", "Thu pm", "Fri am", "Sat pm", "Mon am", "Sat pm"}
 	serverID := html.EscapeString(strings.TrimLeft(r.URL.RequestURI(), "/"))
 
 	q := turnips.New(db)
 	ctx := context.Background()
 	prices, err := q.GetWeeksPriceHistoryByServer(ctx, serverID)
-
+	log.Printf(fmt.Sprintf("found %d prices for %s", len(prices), serverID))
 	if err != nil {
 		log.Println("error fetching prices: ", err)
 		w.WriteHeader(500)

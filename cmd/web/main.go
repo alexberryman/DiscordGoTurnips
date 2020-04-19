@@ -64,7 +64,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	prices, err := q.GetWeeksPriceHistoryByServer(ctx, serverID)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("error fetching prices: ", err)
 		w.WriteHeader(500)
 	}
 

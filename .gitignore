@@ -15,6 +15,3 @@
 
 # IDE things
 .idea/
-
-# Freeze commited environment
-.env

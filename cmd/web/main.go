@@ -40,6 +40,7 @@ func init() {
 	if err != nil {
 		log.Fatal("Cannot connect to database:", err)
 	}
+	log.Println("connected to database with: ", DatabaseUrl)
 
 	db = dbConnection
 

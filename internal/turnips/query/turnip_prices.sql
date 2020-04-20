@@ -11,8 +11,17 @@ SELECT *
 FROM turnip_prices
          inner join nicknames nick on turnip_prices.discord_id = nick.discord_id
 WHERE nick.server_id = $1
-  and day_of_year > extract(DOY FROM now()) - 7
   and year = extract(year from now())
+  and week = extract(week from now())
+order by day_of_year, am_pm;
+
+-- name: GetLastWeeksPriceHistoryByServer :many
+SELECT *
+FROM turnip_prices
+         inner join nicknames nick on turnip_prices.discord_id = nick.discord_id
+WHERE nick.server_id = $1
+  and year = extract(year from now())
+  and week = extract(week from now()) - 1
 order by day_of_year, am_pm;
 
 -- name: ListPrices :many

@@ -24,6 +24,18 @@ var (
 
 var db *sql.DB
 
+type Weekday int
+
+const (
+	Sunday Weekday = iota
+	Monday
+	Tuesday
+	Wednesday
+	Thursday
+	Friday
+	Saturday
+)
+
 func init() {
 	Token = os.Getenv("DISCORD_TOKEN")
 	if Token == "" {
@@ -127,7 +139,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			} else if historyInput == "all" {
 				reactionEmoji, response = fetchServersPriceHistory(q, ctx, m)
 			} else if historyInput == "chart" {
-				reactionEmoji, response = linkServersPriceChart(m)
+				reactionEmoji, response = linkServersCurrentPrices(m)
+			} else if historyInput == "chart previous" {
+				reactionEmoji, response = linkServersPreviousPrices(m)
 			} else {
 				reactionEmoji = "⛔"
 				response = "That is not a valid history request"
@@ -254,20 +268,121 @@ func fetchServersPriceHistory(q *turnips.Queries, ctx context.Context, m *discor
 	return reactionEmoji, response
 }
 
-func linkServersPriceChart(m *discordgo.MessageCreate) (string, string) {
+type dailyPrice struct {
+	DayOfWeek      int
+	MorningPrice   int32
+	AfternoonPrice int32
+}
+
+func linkServersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
 	var response string
 	var reactionEmoji string
-	domain := os.Getenv("CUSTOM_DOMAIN")
-	if domain == "" {
-		domain := os.Getenv("HEROKU_APP_NAME")
-		if domain == "" {
-			response = "No domain name can be found"
-			reactionEmoji = "🆘"
+	q := turnips.New(db)
+	ctx := context.Background()
+	prices, err := q.GetWeeksPriceHistoryByServer(ctx, m.GuildID)
+	log.Printf(fmt.Sprintf("found %d prices for %s", len(prices), m.GuildID))
+	if err != nil {
+		log.Println("error fetching prices: ", err)
+	}
+
+	return buildPriceLinks(prices, response, reactionEmoji)
+}
+
+func linkServersPreviousPrices(m *discordgo.MessageCreate) (string, string) {
+	var response string
+	var reactionEmoji string
+	q := turnips.New(db)
+	ctx := context.Background()
+	prices, err := q.GetLastWeeksPriceHistoryByServer(ctx, m.GuildID)
+	log.Printf(fmt.Sprintf("found %d prices for %s", len(prices), m.GuildID))
+	if err != nil {
+		log.Println("error fetching prices: ", err)
+	}
+
+	data := make([]turnips.GetWeeksPriceHistoryByServerRow, 0)
+	for _, v := range prices {
+		p := turnips.GetWeeksPriceHistoryByServerRow(v)
+		data = append(data, p)
+	}
+
+	return buildPriceLinks(data, response, reactionEmoji)
+}
+
+func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow, response string, reactionEmoji string) (string, string) {
+	priceMap := make(map[string]map[string]dailyPrice)
+
+	for _, value := range prices {
+		wp := getEmptyWeeklyPrices()
+		if _, ok := priceMap[value.Nickname]; ok {
+			updateMorningOrAfterNoonPrice(value, priceMap)
+		} else {
+			priceMap[value.Nickname] = wp
+			updateMorningOrAfterNoonPrice(value, priceMap)
 		}
 	}
-	response = fmt.Sprintf("%s/%s", domain, m.GuildID)
+
+	turnipLink := make(map[string]string)
+	for nickname, prices := range priceMap {
+		for _, d := range dayRange(Monday, Saturday) {
+			if _, ok := turnipLink[nickname]; !ok {
+				turnipLink[nickname] = ""
+			}
+
+			if prices[fmt.Sprint(d)].MorningPrice != 0 {
+				turnipLink[nickname] += fmt.Sprintf("-%d", prices[fmt.Sprint(d)].MorningPrice)
+			} else {
+				turnipLink[nickname] += "-"
+			}
+			if prices[fmt.Sprint(d)].AfternoonPrice != 0 {
+				turnipLink[nickname] += fmt.Sprintf("-%d", prices[fmt.Sprint(d)].AfternoonPrice)
+			} else {
+				turnipLink[nickname] += "-"
+			}
+		}
+		response += fmt.Sprintf("%s: https://ac-turnip.com/#%s\n", nickname, turnipLink[nickname])
+	}
+
 	reactionEmoji = "🔗"
 	return reactionEmoji, response
+}
+
+func dayRange(min, max Weekday) []int {
+	a := make([]int, max-min+1)
+	for i := range a {
+		a[i] = int(min) + i
+	}
+	return a
+}
+
+func getEmptyWeeklyPrices() map[string]dailyPrice {
+	w := newWeeklyPrices()
+
+	for _, d := range dayRange(Monday, Saturday) {
+		dp := dailyPrice{
+			DayOfWeek:      d,
+			MorningPrice:   0,
+			AfternoonPrice: 0,
+		}
+		w[fmt.Sprintf("%d", d)] = dp
+	}
+	return w
+}
+
+func newWeeklyPrices() map[string]dailyPrice {
+	w := make(map[string]dailyPrice)
+	return w
+}
+
+func updateMorningOrAfterNoonPrice(value turnips.GetWeeksPriceHistoryByServerRow, priceMap map[string]map[string]dailyPrice) {
+	if value.AmPm == turnips.AmPmAm {
+		tempPrice := priceMap[value.Nickname][fmt.Sprint(value.DayOfWeek)]
+		tempPrice.MorningPrice = value.Price
+		priceMap[value.Nickname][fmt.Sprint(value.DayOfWeek)] = tempPrice
+	} else {
+		tempPrice := priceMap[value.Nickname][fmt.Sprint(value.DayOfWeek)]
+		tempPrice.AfternoonPrice = value.Price
+		priceMap[value.Nickname][fmt.Sprint(value.DayOfWeek)] = tempPrice
+	}
 }
 
 func persistTurnipPrice(q *turnips.Queries, ctx context.Context, a turnips.Account, turnipPrice int, reactionEmoji string, response string) (string, string) {

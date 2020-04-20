@@ -3,6 +3,7 @@
 package turnips
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 )
@@ -38,12 +39,13 @@ type Nickname struct {
 }
 
 type TurnipPrice struct {
-	ID        int64     `json:"id"`
-	DiscordID string    `json:"discord_id"`
-	Price     int32     `json:"price"`
-	AmPm      AmPm      `json:"am_pm"`
-	DayOfWeek int32     `json:"day_of_week"`
-	DayOfYear int32     `json:"day_of_year"`
-	Year      int32     `json:"year"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        int64         `json:"id"`
+	DiscordID string        `json:"discord_id"`
+	Price     int32         `json:"price"`
+	AmPm      AmPm          `json:"am_pm"`
+	DayOfWeek int32         `json:"day_of_week"`
+	DayOfYear int32         `json:"day_of_year"`
+	Year      int32         `json:"year"`
+	CreatedAt time.Time     `json:"created_at"`
+	Week      sql.NullInt32 `json:"week"`
 }

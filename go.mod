@@ -16,8 +16,6 @@ require (
 	github.com/lib/pq v1.3.0
 	github.com/rubenv/sql-migrate v0.0.0-20200402132117-435005d389bc
 	github.com/sirupsen/logrus v1.5.0 // indirect
-	github.com/spf13/cobra v1.0.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/crypto v0.0.0-20200414173820-0848c9571904 // indirect
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
 	golang.org/x/sys v0.0.0-20200413165638-669c56c373c4 // indirect

@@ -1,4 +1,4 @@
 bot: bin/bot
 bot-windows: bin\bot.exe
-web: bin/web
+web: dist/web
 release: bin/release

@@ -1,5 +1,5 @@
 -- +migrate Up
-alter table turnips.public.turnip_prices
+alter table turnip_prices
     add column week int;
 
 update turnip_prices
@@ -24,6 +24,6 @@ create unique index id_date_price_idx
 -- +migrate Down
 drop index id_date_price_idx;
 
-alter table turnips.public.turnip_prices
+alter table turnip_prices
     drop column week;
 

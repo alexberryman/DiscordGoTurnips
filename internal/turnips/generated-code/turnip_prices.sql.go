@@ -5,7 +5,6 @@ package turnips
 
 import (
 	"context"
-	"database/sql"
 	"time"
 )
 
@@ -23,8 +22,8 @@ func (q *Queries) CountPricesByDiscordId(ctx context.Context, discordID string) 
 }
 
 const createPrice = `-- name: CreatePrice :one
-INSERT INTO turnip_prices (discord_id, price, am_pm, day_of_week, day_of_year, year)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO turnip_prices (discord_id, price, am_pm, day_of_week, day_of_year, year, week)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, discord_id, price, am_pm, day_of_week, day_of_year, year, created_at, week
 `
 
@@ -35,6 +34,7 @@ type CreatePriceParams struct {
 	DayOfWeek int32  `json:"day_of_week"`
 	DayOfYear int32  `json:"day_of_year"`
 	Year      int32  `json:"year"`
+	Week      int32  `json:"week"`
 }
 
 func (q *Queries) CreatePrice(ctx context.Context, arg CreatePriceParams) (TurnipPrice, error) {
@@ -45,6 +45,7 @@ func (q *Queries) CreatePrice(ctx context.Context, arg CreatePriceParams) (Turni
 		arg.DayOfWeek,
 		arg.DayOfYear,
 		arg.Year,
+		arg.Week,
 	)
 	var i TurnipPrice
 	err := row.Scan(
@@ -83,18 +84,18 @@ order by day_of_year, am_pm
 `
 
 type GetLastWeeksPriceHistoryByServerRow struct {
-	ID          int64         `json:"id"`
-	DiscordID   string        `json:"discord_id"`
-	Price       int32         `json:"price"`
-	AmPm        AmPm          `json:"am_pm"`
-	DayOfWeek   int32         `json:"day_of_week"`
-	DayOfYear   int32         `json:"day_of_year"`
-	Year        int32         `json:"year"`
-	CreatedAt   time.Time     `json:"created_at"`
-	Week        sql.NullInt32 `json:"week"`
-	DiscordID_2 string        `json:"discord_id_2"`
-	ServerID    string        `json:"server_id"`
-	Nickname    string        `json:"nickname"`
+	ID          int64     `json:"id"`
+	DiscordID   string    `json:"discord_id"`
+	Price       int32     `json:"price"`
+	AmPm        AmPm      `json:"am_pm"`
+	DayOfWeek   int32     `json:"day_of_week"`
+	DayOfYear   int32     `json:"day_of_year"`
+	Year        int32     `json:"year"`
+	CreatedAt   time.Time `json:"created_at"`
+	Week        int32     `json:"week"`
+	DiscordID_2 string    `json:"discord_id_2"`
+	ServerID    string    `json:"server_id"`
+	Nickname    string    `json:"nickname"`
 }
 
 func (q *Queries) GetLastWeeksPriceHistoryByServer(ctx context.Context, serverID string) ([]GetLastWeeksPriceHistoryByServerRow, error) {
@@ -186,18 +187,18 @@ order by day_of_year, am_pm
 `
 
 type GetWeeksPriceHistoryByServerRow struct {
-	ID          int64         `json:"id"`
-	DiscordID   string        `json:"discord_id"`
-	Price       int32         `json:"price"`
-	AmPm        AmPm          `json:"am_pm"`
-	DayOfWeek   int32         `json:"day_of_week"`
-	DayOfYear   int32         `json:"day_of_year"`
-	Year        int32         `json:"year"`
-	CreatedAt   time.Time     `json:"created_at"`
-	Week        sql.NullInt32 `json:"week"`
-	DiscordID_2 string        `json:"discord_id_2"`
-	ServerID    string        `json:"server_id"`
-	Nickname    string        `json:"nickname"`
+	ID          int64     `json:"id"`
+	DiscordID   string    `json:"discord_id"`
+	Price       int32     `json:"price"`
+	AmPm        AmPm      `json:"am_pm"`
+	DayOfWeek   int32     `json:"day_of_week"`
+	DayOfYear   int32     `json:"day_of_year"`
+	Year        int32     `json:"year"`
+	CreatedAt   time.Time `json:"created_at"`
+	Week        int32     `json:"week"`
+	DiscordID_2 string    `json:"discord_id_2"`
+	ServerID    string    `json:"server_id"`
+	Nickname    string    `json:"nickname"`
 }
 
 func (q *Queries) GetWeeksPriceHistoryByServer(ctx context.Context, serverID string) ([]GetWeeksPriceHistoryByServerRow, error) {

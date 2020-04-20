@@ -35,8 +35,8 @@ FROM turnip_prices
 where discord_id = $1;
 
 -- name: CreatePrice :one
-INSERT INTO turnip_prices (discord_id, price, am_pm, day_of_week, day_of_year, year)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO turnip_prices (discord_id, price, am_pm, day_of_week, day_of_year, year, week)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpdatePrice :one

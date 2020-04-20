@@ -399,6 +399,7 @@ func persistTurnipPrice(q *turnips.Queries, ctx context.Context, a turnips.Accou
 		DayOfWeek: turnipPriceObj.DayOfWeek,
 		DayOfYear: turnipPriceObj.DayOfYear,
 		Year:      turnipPriceObj.Year,
+		Week:      turnipPriceObj.Week,
 	}
 
 	_, err = q.CreatePrice(ctx, priceParams)
@@ -458,6 +459,7 @@ func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, string, 
 		meridiem = turnips.AmPmPm
 	}
 
+	_, week := localTime.ISOWeek()
 	priceThing := turnips.TurnipPrice{
 		DiscordID: a.DiscordID,
 		Price:     int32(turnipPrice),
@@ -465,6 +467,7 @@ func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, string, 
 		DayOfWeek: int32(localTime.Weekday()),
 		DayOfYear: int32(localTime.YearDay()),
 		Year:      int32(localTime.Year()),
+		Week:      int32(week),
 	}
 	priceThing.AmPm = meridiem
 

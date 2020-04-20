@@ -484,16 +484,24 @@ func getOrCreateAccount(s *discordgo.Session, m *discordgo.MessageCreate, existi
 		account, _ = q.CreateAccount(ctx, m.Author.ID)
 		reactToMessage(s, m, "🆕")
 	}
+
+	var name string
+	if m.Member.Nick != "" {
+		name = m.Member.Nick
+	} else {
+		name = m.Author.Username
+	}
+
 	if existingNickname > 0 {
 		nickname, _ = q.GetNickname(ctx, turnips.GetNicknameParams{
 			DiscordID: m.Author.ID,
 			ServerID:  m.GuildID,
 		})
-		if nickname.Nickname != m.Member.Nick {
+		if nickname.Nickname != name {
 			var err error
 			nickname, err = q.UpdateNickname(ctx, turnips.UpdateNicknameParams{
 				DiscordID: m.Author.ID,
-				Nickname:  m.Member.Nick,
+				Nickname:  name,
 				ServerID:  m.GuildID,
 			})
 			if err != nil {
@@ -507,7 +515,7 @@ func getOrCreateAccount(s *discordgo.Session, m *discordgo.MessageCreate, existi
 		nickname, _ = q.CreateNickname(ctx, turnips.CreateNicknameParams{
 			DiscordID: m.Author.ID,
 			ServerID:  m.GuildID,
-			Nickname:  m.Member.Nick,
+			Nickname:  name,
 		})
 
 		reactToMessage(s, m, "🆕")

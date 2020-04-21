@@ -73,17 +73,24 @@ func (q *Queries) DeletePricesForUser(ctx context.Context, discordID string) err
 	return err
 }
 
-const getLastWeeksPriceHistoryByServer = `-- name: GetLastWeeksPriceHistoryByServer :many
+const getHistoricalWeekPriceHistoryByAccount = `-- name: GetHistoricalWeekPriceHistoryByAccount :many
 SELECT id, turnip_prices.discord_id, price, am_pm, day_of_week, day_of_year, year, created_at, week, nick.discord_id, server_id, nickname
 FROM turnip_prices
          inner join nicknames nick on turnip_prices.discord_id = nick.discord_id
-WHERE nick.server_id = $1
+WHERE nick.discord_id = $1
+  and nick.server_id = $2
   and year = extract(year from now())
-  and week = extract(week from now()) - 1
+  and week = $3
 order by day_of_year, am_pm
 `
 
-type GetLastWeeksPriceHistoryByServerRow struct {
+type GetHistoricalWeekPriceHistoryByAccountParams struct {
+	DiscordID string `json:"discord_id"`
+	ServerID  string `json:"server_id"`
+	Week      int32  `json:"week"`
+}
+
+type GetHistoricalWeekPriceHistoryByAccountRow struct {
 	ID          int64     `json:"id"`
 	DiscordID   string    `json:"discord_id"`
 	Price       int32     `json:"price"`
@@ -98,15 +105,81 @@ type GetLastWeeksPriceHistoryByServerRow struct {
 	Nickname    string    `json:"nickname"`
 }
 
-func (q *Queries) GetLastWeeksPriceHistoryByServer(ctx context.Context, serverID string) ([]GetLastWeeksPriceHistoryByServerRow, error) {
-	rows, err := q.query(ctx, q.getLastWeeksPriceHistoryByServerStmt, getLastWeeksPriceHistoryByServer, serverID)
+func (q *Queries) GetHistoricalWeekPriceHistoryByAccount(ctx context.Context, arg GetHistoricalWeekPriceHistoryByAccountParams) ([]GetHistoricalWeekPriceHistoryByAccountRow, error) {
+	rows, err := q.query(ctx, q.getHistoricalWeekPriceHistoryByAccountStmt, getHistoricalWeekPriceHistoryByAccount, arg.DiscordID, arg.ServerID, arg.Week)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetLastWeeksPriceHistoryByServerRow
+	var items []GetHistoricalWeekPriceHistoryByAccountRow
 	for rows.Next() {
-		var i GetLastWeeksPriceHistoryByServerRow
+		var i GetHistoricalWeekPriceHistoryByAccountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DiscordID,
+			&i.Price,
+			&i.AmPm,
+			&i.DayOfWeek,
+			&i.DayOfYear,
+			&i.Year,
+			&i.CreatedAt,
+			&i.Week,
+			&i.DiscordID_2,
+			&i.ServerID,
+			&i.Nickname,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getHistoricalWeekPriceHistoryByServer = `-- name: GetHistoricalWeekPriceHistoryByServer :many
+SELECT id, turnip_prices.discord_id, price, am_pm, day_of_week, day_of_year, year, created_at, week, nick.discord_id, server_id, nickname
+FROM turnip_prices
+         inner join nicknames nick on turnip_prices.discord_id = nick.discord_id
+WHERE nick.server_id = $1
+  and year = extract(year from now())
+  and week = $2
+order by day_of_year, am_pm
+`
+
+type GetHistoricalWeekPriceHistoryByServerParams struct {
+	ServerID string `json:"server_id"`
+	Week     int32  `json:"week"`
+}
+
+type GetHistoricalWeekPriceHistoryByServerRow struct {
+	ID          int64     `json:"id"`
+	DiscordID   string    `json:"discord_id"`
+	Price       int32     `json:"price"`
+	AmPm        AmPm      `json:"am_pm"`
+	DayOfWeek   int32     `json:"day_of_week"`
+	DayOfYear   int32     `json:"day_of_year"`
+	Year        int32     `json:"year"`
+	CreatedAt   time.Time `json:"created_at"`
+	Week        int32     `json:"week"`
+	DiscordID_2 string    `json:"discord_id_2"`
+	ServerID    string    `json:"server_id"`
+	Nickname    string    `json:"nickname"`
+}
+
+func (q *Queries) GetHistoricalWeekPriceHistoryByServer(ctx context.Context, arg GetHistoricalWeekPriceHistoryByServerParams) ([]GetHistoricalWeekPriceHistoryByServerRow, error) {
+	rows, err := q.query(ctx, q.getHistoricalWeekPriceHistoryByServerStmt, getHistoricalWeekPriceHistoryByServer, arg.ServerID, arg.Week)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetHistoricalWeekPriceHistoryByServerRow
+	for rows.Next() {
+		var i GetHistoricalWeekPriceHistoryByServerRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.DiscordID,
@@ -135,23 +208,45 @@ func (q *Queries) GetLastWeeksPriceHistoryByServer(ctx context.Context, serverID
 }
 
 const getWeeksPriceHistoryByAccount = `-- name: GetWeeksPriceHistoryByAccount :many
-SELECT id, discord_id, price, am_pm, day_of_week, day_of_year, year, created_at, week
+SELECT id, turnip_prices.discord_id, price, am_pm, day_of_week, day_of_year, year, created_at, week, nick.discord_id, server_id, nickname
 FROM turnip_prices
-WHERE discord_id = $1
-  and day_of_year > extract(DOY FROM now()) - 7
+         inner join nicknames nick on turnip_prices.discord_id = nick.discord_id
+WHERE nick.discord_id = $1
+  and nick.server_id = $2
   and year = extract(year from now())
+  and week = extract(week from now())
 order by day_of_year, am_pm
 `
 
-func (q *Queries) GetWeeksPriceHistoryByAccount(ctx context.Context, discordID string) ([]TurnipPrice, error) {
-	rows, err := q.query(ctx, q.getWeeksPriceHistoryByAccountStmt, getWeeksPriceHistoryByAccount, discordID)
+type GetWeeksPriceHistoryByAccountParams struct {
+	DiscordID string `json:"discord_id"`
+	ServerID  string `json:"server_id"`
+}
+
+type GetWeeksPriceHistoryByAccountRow struct {
+	ID          int64     `json:"id"`
+	DiscordID   string    `json:"discord_id"`
+	Price       int32     `json:"price"`
+	AmPm        AmPm      `json:"am_pm"`
+	DayOfWeek   int32     `json:"day_of_week"`
+	DayOfYear   int32     `json:"day_of_year"`
+	Year        int32     `json:"year"`
+	CreatedAt   time.Time `json:"created_at"`
+	Week        int32     `json:"week"`
+	DiscordID_2 string    `json:"discord_id_2"`
+	ServerID    string    `json:"server_id"`
+	Nickname    string    `json:"nickname"`
+}
+
+func (q *Queries) GetWeeksPriceHistoryByAccount(ctx context.Context, arg GetWeeksPriceHistoryByAccountParams) ([]GetWeeksPriceHistoryByAccountRow, error) {
+	rows, err := q.query(ctx, q.getWeeksPriceHistoryByAccountStmt, getWeeksPriceHistoryByAccount, arg.DiscordID, arg.ServerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []TurnipPrice
+	var items []GetWeeksPriceHistoryByAccountRow
 	for rows.Next() {
-		var i TurnipPrice
+		var i GetWeeksPriceHistoryByAccountRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.DiscordID,
@@ -162,6 +257,9 @@ func (q *Queries) GetWeeksPriceHistoryByAccount(ctx context.Context, discordID s
 			&i.Year,
 			&i.CreatedAt,
 			&i.Week,
+			&i.DiscordID_2,
+			&i.ServerID,
+			&i.Nickname,
 		); err != nil {
 			return nil, err
 		}

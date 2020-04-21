@@ -17,9 +17,10 @@ type Querier interface {
 	DeleteNickname(ctx context.Context, discordID string) error
 	DeletePricesForUser(ctx context.Context, discordID string) error
 	GetAccount(ctx context.Context, discordID string) (Account, error)
-	GetLastWeeksPriceHistoryByServer(ctx context.Context, serverID string) ([]GetLastWeeksPriceHistoryByServerRow, error)
+	GetHistoricalWeekPriceHistoryByAccount(ctx context.Context, arg GetHistoricalWeekPriceHistoryByAccountParams) ([]GetHistoricalWeekPriceHistoryByAccountRow, error)
+	GetHistoricalWeekPriceHistoryByServer(ctx context.Context, arg GetHistoricalWeekPriceHistoryByServerParams) ([]GetHistoricalWeekPriceHistoryByServerRow, error)
 	GetNickname(ctx context.Context, arg GetNicknameParams) (Nickname, error)
-	GetWeeksPriceHistoryByAccount(ctx context.Context, discordID string) ([]TurnipPrice, error)
+	GetWeeksPriceHistoryByAccount(ctx context.Context, arg GetWeeksPriceHistoryByAccountParams) ([]GetWeeksPriceHistoryByAccountRow, error)
 	GetWeeksPriceHistoryByServer(ctx context.Context, serverID string) ([]GetWeeksPriceHistoryByServerRow, error)
 	ListAccounts(ctx context.Context) ([]Account, error)
 	ListNicknames(ctx context.Context) ([]Nickname, error)

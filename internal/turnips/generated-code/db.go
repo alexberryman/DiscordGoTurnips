@@ -52,8 +52,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAccountStmt, err = db.PrepareContext(ctx, getAccount); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAccount: %w", err)
 	}
-	if q.getLastWeeksPriceHistoryByServerStmt, err = db.PrepareContext(ctx, getLastWeeksPriceHistoryByServer); err != nil {
-		return nil, fmt.Errorf("error preparing query GetLastWeeksPriceHistoryByServer: %w", err)
+	if q.getHistoricalWeekPriceHistoryByAccountStmt, err = db.PrepareContext(ctx, getHistoricalWeekPriceHistoryByAccount); err != nil {
+		return nil, fmt.Errorf("error preparing query GetHistoricalWeekPriceHistoryByAccount: %w", err)
+	}
+	if q.getHistoricalWeekPriceHistoryByServerStmt, err = db.PrepareContext(ctx, getHistoricalWeekPriceHistoryByServer); err != nil {
+		return nil, fmt.Errorf("error preparing query GetHistoricalWeekPriceHistoryByServer: %w", err)
 	}
 	if q.getNicknameStmt, err = db.PrepareContext(ctx, getNickname); err != nil {
 		return nil, fmt.Errorf("error preparing query GetNickname: %w", err)
@@ -137,9 +140,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAccountStmt: %w", cerr)
 		}
 	}
-	if q.getLastWeeksPriceHistoryByServerStmt != nil {
-		if cerr := q.getLastWeeksPriceHistoryByServerStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getLastWeeksPriceHistoryByServerStmt: %w", cerr)
+	if q.getHistoricalWeekPriceHistoryByAccountStmt != nil {
+		if cerr := q.getHistoricalWeekPriceHistoryByAccountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getHistoricalWeekPriceHistoryByAccountStmt: %w", cerr)
+		}
+	}
+	if q.getHistoricalWeekPriceHistoryByServerStmt != nil {
+		if cerr := q.getHistoricalWeekPriceHistoryByServerStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getHistoricalWeekPriceHistoryByServerStmt: %w", cerr)
 		}
 	}
 	if q.getNicknameStmt != nil {
@@ -224,53 +232,55 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                                   DBTX
-	tx                                   *sql.Tx
-	countAccountsByDiscordIdStmt         *sql.Stmt
-	countNicknameByDiscordIdStmt         *sql.Stmt
-	countPricesByDiscordIdStmt           *sql.Stmt
-	createAccountStmt                    *sql.Stmt
-	createNicknameStmt                   *sql.Stmt
-	createPriceStmt                      *sql.Stmt
-	deleteAccountStmt                    *sql.Stmt
-	deleteNicknameStmt                   *sql.Stmt
-	deletePricesForUserStmt              *sql.Stmt
-	getAccountStmt                       *sql.Stmt
-	getLastWeeksPriceHistoryByServerStmt *sql.Stmt
-	getNicknameStmt                      *sql.Stmt
-	getWeeksPriceHistoryByAccountStmt    *sql.Stmt
-	getWeeksPriceHistoryByServerStmt     *sql.Stmt
-	listAccountsStmt                     *sql.Stmt
-	listNicknamesStmt                    *sql.Stmt
-	listPricesStmt                       *sql.Stmt
-	updateNicknameStmt                   *sql.Stmt
-	updatePriceStmt                      *sql.Stmt
-	updateTimeZoneStmt                   *sql.Stmt
+	db                                         DBTX
+	tx                                         *sql.Tx
+	countAccountsByDiscordIdStmt               *sql.Stmt
+	countNicknameByDiscordIdStmt               *sql.Stmt
+	countPricesByDiscordIdStmt                 *sql.Stmt
+	createAccountStmt                          *sql.Stmt
+	createNicknameStmt                         *sql.Stmt
+	createPriceStmt                            *sql.Stmt
+	deleteAccountStmt                          *sql.Stmt
+	deleteNicknameStmt                         *sql.Stmt
+	deletePricesForUserStmt                    *sql.Stmt
+	getAccountStmt                             *sql.Stmt
+	getHistoricalWeekPriceHistoryByAccountStmt *sql.Stmt
+	getHistoricalWeekPriceHistoryByServerStmt  *sql.Stmt
+	getNicknameStmt                            *sql.Stmt
+	getWeeksPriceHistoryByAccountStmt          *sql.Stmt
+	getWeeksPriceHistoryByServerStmt           *sql.Stmt
+	listAccountsStmt                           *sql.Stmt
+	listNicknamesStmt                          *sql.Stmt
+	listPricesStmt                             *sql.Stmt
+	updateNicknameStmt                         *sql.Stmt
+	updatePriceStmt                            *sql.Stmt
+	updateTimeZoneStmt                         *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                                   tx,
-		tx:                                   tx,
-		countAccountsByDiscordIdStmt:         q.countAccountsByDiscordIdStmt,
-		countNicknameByDiscordIdStmt:         q.countNicknameByDiscordIdStmt,
-		countPricesByDiscordIdStmt:           q.countPricesByDiscordIdStmt,
-		createAccountStmt:                    q.createAccountStmt,
-		createNicknameStmt:                   q.createNicknameStmt,
-		createPriceStmt:                      q.createPriceStmt,
-		deleteAccountStmt:                    q.deleteAccountStmt,
-		deleteNicknameStmt:                   q.deleteNicknameStmt,
-		deletePricesForUserStmt:              q.deletePricesForUserStmt,
-		getAccountStmt:                       q.getAccountStmt,
-		getLastWeeksPriceHistoryByServerStmt: q.getLastWeeksPriceHistoryByServerStmt,
-		getNicknameStmt:                      q.getNicknameStmt,
-		getWeeksPriceHistoryByAccountStmt:    q.getWeeksPriceHistoryByAccountStmt,
-		getWeeksPriceHistoryByServerStmt:     q.getWeeksPriceHistoryByServerStmt,
-		listAccountsStmt:                     q.listAccountsStmt,
-		listNicknamesStmt:                    q.listNicknamesStmt,
-		listPricesStmt:                       q.listPricesStmt,
-		updateNicknameStmt:                   q.updateNicknameStmt,
-		updatePriceStmt:                      q.updatePriceStmt,
-		updateTimeZoneStmt:                   q.updateTimeZoneStmt,
+		db:                           tx,
+		tx:                           tx,
+		countAccountsByDiscordIdStmt: q.countAccountsByDiscordIdStmt,
+		countNicknameByDiscordIdStmt: q.countNicknameByDiscordIdStmt,
+		countPricesByDiscordIdStmt:   q.countPricesByDiscordIdStmt,
+		createAccountStmt:            q.createAccountStmt,
+		createNicknameStmt:           q.createNicknameStmt,
+		createPriceStmt:              q.createPriceStmt,
+		deleteAccountStmt:            q.deleteAccountStmt,
+		deleteNicknameStmt:           q.deleteNicknameStmt,
+		deletePricesForUserStmt:      q.deletePricesForUserStmt,
+		getAccountStmt:               q.getAccountStmt,
+		getHistoricalWeekPriceHistoryByAccountStmt: q.getHistoricalWeekPriceHistoryByAccountStmt,
+		getHistoricalWeekPriceHistoryByServerStmt:  q.getHistoricalWeekPriceHistoryByServerStmt,
+		getNicknameStmt:                   q.getNicknameStmt,
+		getWeeksPriceHistoryByAccountStmt: q.getWeeksPriceHistoryByAccountStmt,
+		getWeeksPriceHistoryByServerStmt:  q.getWeeksPriceHistoryByServerStmt,
+		listAccountsStmt:                  q.listAccountsStmt,
+		listNicknamesStmt:                 q.listNicknamesStmt,
+		listPricesStmt:                    q.listPricesStmt,
+		updateNicknameStmt:                q.updateNicknameStmt,
+		updatePriceStmt:                   q.updatePriceStmt,
+		updateTimeZoneStmt:                q.updateTimeZoneStmt,
 	}
 }

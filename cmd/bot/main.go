@@ -139,10 +139,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				reactionEmoji, response = linkServersCurrentPrices(m)
 			} else if offset, err := strconv.Atoi(historyInput); err == nil {
 				reactionEmoji, response = linkAccountsPreviousPrices(m, offset*(-1))
-			} else if historyInput == "all -1" {
+			} else if strings.HasPrefix(historyInput, "all") {
 				historicalServerInput := strings.TrimSpace(strings.Replace(historyInput, "all", "", 1))
 				if offset, err := strconv.Atoi(historicalServerInput); err == nil {
 					reactionEmoji, response = linkServersPreviousPrices(m, offset*(-1))
+				} else {
+					response = "That isn't a valid week offset. Use -1, -2, -3 etc..."
+					reactionEmoji = "⏰"
 				}
 			} else {
 				reactionEmoji = "⛔"

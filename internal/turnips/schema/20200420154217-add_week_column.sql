@@ -4,15 +4,15 @@ alter table turnip_prices
 
 update turnip_prices
 set week = newdata.w
-from (select extract(WEEK from p.created_at at time zone 'utc' at time zone a.time_zone) w, a.discord_id id
+from (select extract(WEEK from created_at at time zone 'utc' at time zone a.time_zone) w, a.discord_id id
       from turnip_prices
                inner join accounts a on turnip_prices.discord_id = a.discord_id
-               inner join prices p on a.discord_id = p.discord_id
      ) newdata
 where turnip_prices.week is null
   and turnip_prices.discord_id = newdata.id;
 
-alter table turnip_prices alter column week set not null;
+alter table turnip_prices
+    alter column week set not null;
 
 
 create unique index id_date_price_idx

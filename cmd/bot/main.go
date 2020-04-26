@@ -136,9 +136,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if strings.Contains(input, CmdGraph) {
 			historyInput := strings.TrimSpace(strings.Replace(input, CmdGraph, "", 1))
 			if historyInput == "" {
-				linkUsersCurrentPrices(m, s)
+				linkUsersCurrentPrices(s, m)
 			} else if historyInput == "all" {
-				linkServersCurrentPrices(m, s)
+				linkServersCurrentPrices(s, m)
 			} else if offset, err := strconv.Atoi(historyInput); err == nil {
 				linkAccountsPreviousPrices(m, s, offset*(-1))
 			} else if strings.HasPrefix(historyInput, "all") {

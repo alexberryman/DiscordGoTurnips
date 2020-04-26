@@ -37,6 +37,7 @@ func persistTurnipPrice(ctx context.Context, m *discordgo.MessageCreate, s *disc
 		response = turnipPriceColorfulResponse(turnipPrice)
 	}
 	flushEmojiAndResponseToDiscord(s, m, response)
+	linkUsersCurrentPrices(s, m)
 }
 
 func updateExistingTurnipPrice(ctx context.Context, s *discordgo.Session, m *discordgo.MessageCreate, a turnips.Account, turnipPrice int) {
@@ -65,6 +66,7 @@ func updateExistingTurnipPrice(ctx context.Context, s *discordgo.Session, m *dis
 	}
 
 	flushEmojiAndResponseToDiscord(s, m, response)
+	linkUsersCurrentPrices(s, m)
 }
 
 func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, response, turnips.TurnipPrice) {

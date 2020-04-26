@@ -20,7 +20,7 @@ type response struct {
 	Emoji string
 }
 
-func linkServersCurrentPrices(m *discordgo.MessageCreate, s *discordgo.Session) {
+func linkServersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate) {
 	q := turnips.New(db)
 	ctx := context.Background()
 	prices, err := q.GetWeeksPriceHistoryByServer(ctx, m.GuildID)
@@ -32,7 +32,7 @@ func linkServersCurrentPrices(m *discordgo.MessageCreate, s *discordgo.Session) 
 	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkUsersCurrentPrices(m *discordgo.MessageCreate, s *discordgo.Session) {
+func linkUsersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var response response
 
 	q := turnips.New(db)

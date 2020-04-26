@@ -20,7 +20,10 @@ type response struct {
 	Emoji string
 }
 
-func linkServersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate) {
+const AcTurnipsChartLink = "%s: <https://ac-turnip.com/#%s>\n"
+const AcTurnipsImageLink = "%s: https://ac-turnip.com/p%s.png\n"
+
+func linkServersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate, linkFormat string) {
 	q := turnips.New(db)
 	ctx := context.Background()
 	prices, err := q.GetWeeksPriceHistoryByServer(ctx, m.GuildID)
@@ -28,11 +31,11 @@ func linkServersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate) 
 		log.Println("error fetching prices: ", err)
 	}
 
-	response := buildPriceLinks(prices)
+	response := buildPriceGraphs(prices, linkFormat)
 	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkUsersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate) {
+func linkUsersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate, linkFormat string) {
 	var response response
 
 	q := turnips.New(db)
@@ -52,12 +55,12 @@ func linkUsersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate) {
 		data = append(data, p)
 	}
 
-	response = buildPriceLinks(data)
+	response = buildPriceGraphs(data, linkFormat)
 
 	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkAccountsPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int) {
+func linkAccountsPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int, linkFormat string) {
 	q := turnips.New(db)
 	ctx := context.Background()
 
@@ -78,11 +81,11 @@ func linkAccountsPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session
 		data = append(data, p)
 	}
 
-	response := buildPriceLinks(data)
+	response := buildPriceGraphs(data, linkFormat)
 	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkServersPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int) {
+func linkServersPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int, linkFormat string) {
 	q := turnips.New(db)
 	ctx := context.Background()
 
@@ -102,7 +105,7 @@ func linkServersPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session,
 		data = append(data, p)
 	}
 
-	response := buildPriceLinks(data)
+	response := buildPriceGraphs(data, linkFormat)
 	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
@@ -114,9 +117,13 @@ func getCurrentWeek(m *discordgo.MessageCreate, q *turnips.Queries, ctx context.
 	return week, err
 }
 
-func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow) response {
+func buildPriceGraphs(prices []turnips.GetWeeksPriceHistoryByServerRow, format string) response {
 	var response response
 
+	return buildPriceUri(prices, response, format)
+}
+
+func buildPriceUri(prices []turnips.GetWeeksPriceHistoryByServerRow, response response, format string) response {
 	priceMap := make(map[string]map[string]dailyPrice)
 
 	for _, value := range prices {
@@ -147,7 +154,7 @@ func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow) response 
 				turnipLink[nickname] += "-"
 			}
 		}
-		response.Text += fmt.Sprintf("%s: <https://ac-turnip.com/#%s>\n", nickname, turnipLink[nickname])
+		response.Text += fmt.Sprintf(format, nickname, turnipLink[nickname])
 	}
 
 	response.Emoji = "🔗"

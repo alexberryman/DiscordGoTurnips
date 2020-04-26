@@ -136,15 +136,15 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if strings.Contains(input, CmdGraph) {
 			historyInput := strings.TrimSpace(strings.Replace(input, CmdGraph, "", 1))
 			if historyInput == "" {
-				linkUsersCurrentPrices(s, m)
+				linkUsersCurrentPrices(s, m, AcTurnipsChartLink)
 			} else if historyInput == "all" {
-				linkServersCurrentPrices(s, m)
+				linkServersCurrentPrices(s, m, AcTurnipsChartLink)
 			} else if offset, err := strconv.Atoi(historyInput); err == nil {
-				linkAccountsPreviousPrices(m, s, offset*(-1))
+				linkAccountsPreviousPrices(m, s, offset*(-1), AcTurnipsChartLink)
 			} else if strings.HasPrefix(historyInput, "all") {
 				historicalServerInput := strings.TrimSpace(strings.Replace(historyInput, "all", "", 1))
 				if offset, err := strconv.Atoi(historicalServerInput); err == nil {
-					linkServersPreviousPrices(m, s, offset*(-1))
+					linkServersPreviousPrices(m, s, offset*(-1), AcTurnipsChartLink)
 				} else {
 					r.Text = "That isn't a valid week offset. Use -1, -2, -3 etc..."
 					r.Emoji = "⏰"

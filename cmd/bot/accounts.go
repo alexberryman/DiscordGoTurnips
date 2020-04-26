@@ -9,22 +9,26 @@ import (
 	"time"
 )
 
-func updateAccountTimeZone(input string, CmdTimeZone string, reactionEmoji string, response string, q *turnips.Queries, ctx context.Context, a turnips.Account) (string, string) {
+func updateAccountTimeZone(ctx context.Context, input string, CmdTimeZone string, s *discordgo.Session, m *discordgo.MessageCreate, q *turnips.Queries, a turnips.Account) {
+	var response response
+
 	timezoneInput := strings.TrimSpace(strings.Replace(input, CmdTimeZone, "", 1))
 	_, err := time.LoadLocation(timezoneInput)
-	if err != nil {
-		reactionEmoji = "⛔"
-		response = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
 
+	if err != nil {
+		response.Emoji = "⛔"
+		response.Text = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+		flushEmojiAndResponseToDiscord(s, m, response)
 	} else {
-		reactionEmoji = "✅"
+		response.Emoji = "✅"
 	}
 
 	_, err = q.UpdateTimeZone(ctx, turnips.UpdateTimeZoneParams{
 		DiscordID: a.DiscordID,
 		TimeZone:  timezoneInput,
 	})
-	return reactionEmoji, response
+
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
 func getOrCreateAccount(s *discordgo.Session, m *discordgo.MessageCreate, existingAccount int64, existingNickname int64, q *turnips.Queries, ctx context.Context) turnips.Account {

@@ -1,9 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/bwmarrin/discordgo"
+)
 
-func fetchHelpResponse(response string, botMentionToken string, CmdGraph string, CmdTimeZone string, reactionEmoji string) (string, string) {
-	response = fmt.Sprintf("`%s` - register a price for your the current time (defult timezone America/Chicago). Only one is allowed morning/afternoon each day\n"+
+func helpResponse(s *discordgo.Session, m *discordgo.MessageCreate, botMentionToken string, CmdGraph string, CmdTimeZone string) {
+	var response response
+	response.Text = fmt.Sprintf("`%s` - register a price for your the current time (defult timezone America/Chicago). Only one is allowed morning/afternoon each day\n"+
 		"`%s` - update existing reported price\n"+
 		"`%s` - get the your price prediction graph for the week\n"+
 		"`%s` - get the price prediction graphs for all users on the server for the week\n"+
@@ -19,6 +23,7 @@ func fetchHelpResponse(response string, botMentionToken string, CmdGraph string,
 		fmt.Sprintf("%s %s America/New_York", botMentionToken, CmdTimeZone),
 	)
 
-	reactionEmoji = "💁"
-	return reactionEmoji, response
+	response.Emoji = "💁"
+
+	flushEmojiAndResponseToDiscord(s, m, response)
 }

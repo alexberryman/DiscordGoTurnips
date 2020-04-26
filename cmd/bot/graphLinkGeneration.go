@@ -15,9 +15,12 @@ type dailyPrice struct {
 	AfternoonPrice int32
 }
 
-func linkServersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
-	var response string
-	var reactionEmoji string
+type response struct {
+	Text  string
+	Emoji string
+}
+
+func linkServersCurrentPrices(m *discordgo.MessageCreate, s *discordgo.Session) {
 	q := turnips.New(db)
 	ctx := context.Background()
 	prices, err := q.GetWeeksPriceHistoryByServer(ctx, m.GuildID)
@@ -25,12 +28,13 @@ func linkServersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
 		log.Println("error fetching prices: ", err)
 	}
 
-	return buildPriceLinks(prices, response, reactionEmoji)
+	response := buildPriceLinks(prices)
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkUsersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
-	var response string
-	var reactionEmoji string
+func linkUsersCurrentPrices(m *discordgo.MessageCreate, s *discordgo.Session) {
+	var response response
+
 	q := turnips.New(db)
 	ctx := context.Background()
 	prices, err := q.GetWeeksPriceHistoryByAccount(ctx, turnips.GetWeeksPriceHistoryByAccountParams{
@@ -48,12 +52,12 @@ func linkUsersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
 		data = append(data, p)
 	}
 
-	return buildPriceLinks(data, response, reactionEmoji)
+	response = buildPriceLinks(data)
+
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkAccountsPreviousPrices(m *discordgo.MessageCreate, offset int) (string, string) {
-	var response string
-	var reactionEmoji string
+func linkAccountsPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int) {
 	q := turnips.New(db)
 	ctx := context.Background()
 
@@ -74,12 +78,11 @@ func linkAccountsPreviousPrices(m *discordgo.MessageCreate, offset int) (string,
 		data = append(data, p)
 	}
 
-	return buildPriceLinks(data, response, reactionEmoji)
+	response := buildPriceLinks(data)
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkServersPreviousPrices(m *discordgo.MessageCreate, offset int) (string, string) {
-	var response string
-	var reactionEmoji string
+func linkServersPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int) {
 	q := turnips.New(db)
 	ctx := context.Background()
 
@@ -99,7 +102,8 @@ func linkServersPreviousPrices(m *discordgo.MessageCreate, offset int) (string, 
 		data = append(data, p)
 	}
 
-	return buildPriceLinks(data, response, reactionEmoji)
+	response := buildPriceLinks(data)
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
 func getCurrentWeek(m *discordgo.MessageCreate, q *turnips.Queries, ctx context.Context) (int, error) {
@@ -110,7 +114,9 @@ func getCurrentWeek(m *discordgo.MessageCreate, q *turnips.Queries, ctx context.
 	return week, err
 }
 
-func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow, response string, reactionEmoji string) (string, string) {
+func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow) response {
+	var response response
+
 	priceMap := make(map[string]map[string]dailyPrice)
 
 	for _, value := range prices {
@@ -141,11 +147,11 @@ func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow, response 
 				turnipLink[nickname] += "-"
 			}
 		}
-		response += fmt.Sprintf("%s: <https://ac-turnip.com/#%s>\n", nickname, turnipLink[nickname])
+		response.Text += fmt.Sprintf("%s: <https://ac-turnip.com/#%s>\n", nickname, turnipLink[nickname])
 	}
 
-	reactionEmoji = "🔗"
-	return reactionEmoji, response
+	response.Emoji = "🔗"
+	return response
 }
 
 func dayRange(min, max Weekday) []int {

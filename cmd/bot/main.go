@@ -35,6 +35,10 @@ const (
 	Saturday
 )
 
+const CmdGraph = "graph"
+const CmdTimeZone = "timezone"
+const CmdUpdate = "update"
+
 func init() {
 	Token = os.Getenv("DISCORD_TOKEN")
 	if Token == "" {
@@ -83,6 +87,7 @@ func main() {
 // This function will be called (due to AddHandler above) every time a new
 // message is created on any channel that the autenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	var r response
 
 	// Ignore all messages created by the bot itself
 	botName := s.State.User.Username
@@ -101,14 +106,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		input := strings.TrimSpace(strings.Replace(tokenizedContent, botMentionToken, "", 1))
 		q := turnips.New(db)
 		ctx := context.Background()
-		var response string
-		reactionEmoji := "❌"
+
+		r.Emoji = "❌"
 		existingAccount, err := q.CountAccountsByDiscordId(ctx, m.Author.ID)
 		if err != nil {
 			log.Println(err)
-			response = "Nice work! You broke the one thing that made people happy."
-			reactionEmoji = "🔥"
-			flushEmojiAndResponseToDiscord(s, m, reactionEmoji, response)
+			r.Text = "Nice work! You broke the one thing that made people happy."
+			r.Emoji = "🔥"
+			flushEmojiAndResponseToDiscord(s, m, r)
 			return
 		}
 
@@ -118,65 +123,67 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		})
 		if err != nil {
 			log.Println(err)
-			response = "Nice work! You broke the one thing that made people happy."
-			reactionEmoji = "🔥"
-			flushEmojiAndResponseToDiscord(s, m, reactionEmoji, response)
+			r.Text = "Nice work! You broke the one thing that made people happy."
+			r.Emoji = "🔥"
+			flushEmojiAndResponseToDiscord(s, m, r)
 			return
 		}
 
 		account := getOrCreateAccount(s, m, existingAccount, existingNickname, q, ctx)
 
-		const CmdGraph = "graph"
-		const CmdTimeZone = "timezone"
-		const CmdUpdate = "update"
 		if turnipPrice, err := strconv.Atoi(input); err == nil {
-			reactionEmoji, response = persistTurnipPrice(q, ctx, account, turnipPrice, reactionEmoji, response)
+			persistTurnipPrice(ctx, m, s, account, turnipPrice)
 		} else if strings.Contains(input, CmdGraph) {
 			historyInput := strings.TrimSpace(strings.Replace(input, CmdGraph, "", 1))
 			if historyInput == "" {
-				reactionEmoji, response = linkUsersCurrentPrices(m)
+				linkUsersCurrentPrices(m, s)
 			} else if historyInput == "all" {
-				reactionEmoji, response = linkServersCurrentPrices(m)
+				linkServersCurrentPrices(m, s)
 			} else if offset, err := strconv.Atoi(historyInput); err == nil {
-				reactionEmoji, response = linkAccountsPreviousPrices(m, offset*(-1))
+				linkAccountsPreviousPrices(m, s, offset*(-1))
 			} else if strings.HasPrefix(historyInput, "all") {
 				historicalServerInput := strings.TrimSpace(strings.Replace(historyInput, "all", "", 1))
 				if offset, err := strconv.Atoi(historicalServerInput); err == nil {
-					reactionEmoji, response = linkServersPreviousPrices(m, offset*(-1))
+					linkServersPreviousPrices(m, s, offset*(-1))
 				} else {
-					response = "That isn't a valid week offset. Use -1, -2, -3 etc..."
-					reactionEmoji = "⏰"
+					r.Text = "That isn't a valid week offset. Use -1, -2, -3 etc..."
+					r.Emoji = "⏰"
+					flushEmojiAndResponseToDiscord(s, m, r)
+					return
 				}
 			} else {
-				reactionEmoji = "⛔"
-				response = "That is not a valid history request"
+				r.Emoji = "⛔"
+				r.Text = "That is not a valid history request"
+				flushEmojiAndResponseToDiscord(s, m, r)
+				return
 			}
 
 		} else if strings.Contains(input, CmdUpdate) {
 			updateInput := strings.TrimSpace(strings.Replace(input, CmdUpdate, "", 1))
 			if updateTurnipPrice, err := strconv.Atoi(updateInput); err == nil {
-				reactionEmoji, response = updateExistingTurnipPrice(q, ctx, account, updateTurnipPrice, reactionEmoji, response)
+				updateExistingTurnipPrice(ctx, s, m, account, updateTurnipPrice)
 			} else {
-				reactionEmoji = "⛔"
-				response = "That is not a valid price"
+				r.Emoji = "⛔"
+				r.Text = "That is not a valid price"
+				flushEmojiAndResponseToDiscord(s, m, r)
+				return
 			}
 
 		} else if strings.HasPrefix(input, CmdTimeZone) {
-			reactionEmoji, response = updateAccountTimeZone(input, CmdTimeZone, reactionEmoji, response, q, ctx, account)
+			updateAccountTimeZone(ctx, input, CmdTimeZone, s, m, q, account)
 		} else if strings.HasPrefix(input, "help") {
-			reactionEmoji, response = fetchHelpResponse(response, botMentionToken, CmdGraph, CmdTimeZone, reactionEmoji)
-
+			helpResponse(s, m, botMentionToken, CmdGraph, CmdTimeZone)
 		} else {
-			response = "Wut?"
+			r.Text = "Wut?"
+			flushEmojiAndResponseToDiscord(s, m, r)
+			return
 		}
-
-		flushEmojiAndResponseToDiscord(s, m, reactionEmoji, response)
 	}
 }
 
-func flushEmojiAndResponseToDiscord(s *discordgo.Session, m *discordgo.MessageCreate, reactionEmoji string, response string) {
-	reactToMessage(s, m, reactionEmoji)
-	respondAsNewMessage(s, m, response)
+func flushEmojiAndResponseToDiscord(s *discordgo.Session, m *discordgo.MessageCreate, r response) {
+	reactToMessage(s, m, r.Emoji)
+	respondAsNewMessage(s, m, r.Text)
 }
 
 func respondAsNewMessage(s *discordgo.Session, m *discordgo.MessageCreate, response string) {

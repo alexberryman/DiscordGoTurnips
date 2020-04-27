@@ -31,6 +31,6 @@ jobs:
         fi
 
     - name: Build
-      run: go build -v .
+      run: go build -v ./cmd/bot
     - name: Test
       run: go test ./cmd/bot

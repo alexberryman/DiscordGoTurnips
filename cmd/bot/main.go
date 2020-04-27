@@ -42,12 +42,12 @@ const CmdUpdate = "update"
 func init() {
 	Token = os.Getenv("DISCORD_TOKEN")
 	if Token == "" {
-		log.Fatal("DISCORD_TOKEN must be set")
+		log.Println("DISCORD_TOKEN must be set")
 	}
 
 	DatabaseUrl = os.Getenv("DATABASE_URL")
 	if DatabaseUrl == "" {
-		log.Fatal("DatabaseUrl must be set")
+		log.Println("DATABASE_URL must be set")
 	}
 
 	dbConnection, err := sql.Open("postgres", DatabaseUrl)

@@ -20,8 +20,8 @@ type response struct {
 	Emoji string
 }
 
-const AcTurnipsChartLink = "%s: <https://ac-turnip.com/#%s>\n"
-const AcTurnipsImageLink = "%s: https://ac-turnip.com/p%s.png\n"
+const AcTurnipsChartLink = "%s: <https://ac-turnip.com/share?f=%s>\n"
+const AcTurnipsImageLink = "%s: https://ac-turnip.com/p-%s.png\n"
 
 func linkServersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate, linkFormat string) {
 	q := turnips.New(db)
@@ -118,12 +118,11 @@ func getCurrentWeek(m *discordgo.MessageCreate, q *turnips.Queries, ctx context.
 }
 
 func buildPriceGraphs(prices []turnips.GetWeeksPriceHistoryByServerRow, format string) response {
-	var response response
 
-	return buildPriceUri(prices, response, format)
+	return buildPriceUri(prices, format)
 }
 
-func buildPriceUri(prices []turnips.GetWeeksPriceHistoryByServerRow, response response, format string) response {
+func buildPriceUri(prices []turnips.GetWeeksPriceHistoryByServerRow, format string) response {
 	priceMap := make(map[string]map[string]dailyPrice)
 
 	for _, value := range prices {
@@ -136,6 +135,7 @@ func buildPriceUri(prices []turnips.GetWeeksPriceHistoryByServerRow, response re
 		}
 	}
 
+	var response response
 	turnipLink := make(map[string]string)
 	for nickname, prices := range priceMap {
 		for _, d := range dayRange(Monday, Saturday) {

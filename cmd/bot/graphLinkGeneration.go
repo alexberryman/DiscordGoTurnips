@@ -15,9 +15,15 @@ type dailyPrice struct {
 	AfternoonPrice int32
 }
 
-func linkServersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
-	var response string
-	var reactionEmoji string
+type response struct {
+	Text  string
+	Emoji string
+}
+
+const AcTurnipsChartLink = "%s: <https://ac-turnip.com/share?f=%s>\n"
+const AcTurnipsImageLink = "%s: https://ac-turnip.com/p-%s.png\n"
+
+func linkServersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate, linkFormat string) {
 	q := turnips.New(db)
 	ctx := context.Background()
 	prices, err := q.GetWeeksPriceHistoryByServer(ctx, m.GuildID)
@@ -25,12 +31,13 @@ func linkServersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
 		log.Println("error fetching prices: ", err)
 	}
 
-	return buildPriceLinks(prices, response, reactionEmoji)
+	response := buildPriceGraphs(prices, linkFormat)
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkUsersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
-	var response string
-	var reactionEmoji string
+func linkUsersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate, linkFormat string) {
+	var response response
+
 	q := turnips.New(db)
 	ctx := context.Background()
 	prices, err := q.GetWeeksPriceHistoryByAccount(ctx, turnips.GetWeeksPriceHistoryByAccountParams{
@@ -48,12 +55,12 @@ func linkUsersCurrentPrices(m *discordgo.MessageCreate) (string, string) {
 		data = append(data, p)
 	}
 
-	return buildPriceLinks(data, response, reactionEmoji)
+	response = buildPriceGraphs(data, linkFormat)
+
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkAccountsPreviousPrices(m *discordgo.MessageCreate, offset int) (string, string) {
-	var response string
-	var reactionEmoji string
+func linkAccountsPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int, linkFormat string) {
 	q := turnips.New(db)
 	ctx := context.Background()
 
@@ -74,12 +81,11 @@ func linkAccountsPreviousPrices(m *discordgo.MessageCreate, offset int) (string,
 		data = append(data, p)
 	}
 
-	return buildPriceLinks(data, response, reactionEmoji)
+	response := buildPriceGraphs(data, linkFormat)
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func linkServersPreviousPrices(m *discordgo.MessageCreate, offset int) (string, string) {
-	var response string
-	var reactionEmoji string
+func linkServersPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session, offset int, linkFormat string) {
 	q := turnips.New(db)
 	ctx := context.Background()
 
@@ -99,7 +105,8 @@ func linkServersPreviousPrices(m *discordgo.MessageCreate, offset int) (string, 
 		data = append(data, p)
 	}
 
-	return buildPriceLinks(data, response, reactionEmoji)
+	response := buildPriceGraphs(data, linkFormat)
+	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
 func getCurrentWeek(m *discordgo.MessageCreate, q *turnips.Queries, ctx context.Context) (int, error) {
@@ -110,7 +117,12 @@ func getCurrentWeek(m *discordgo.MessageCreate, q *turnips.Queries, ctx context.
 	return week, err
 }
 
-func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow, response string, reactionEmoji string) (string, string) {
+func buildPriceGraphs(prices []turnips.GetWeeksPriceHistoryByServerRow, format string) response {
+
+	return buildPriceUri(prices, format)
+}
+
+func buildPriceUri(prices []turnips.GetWeeksPriceHistoryByServerRow, format string) response {
 	priceMap := make(map[string]map[string]dailyPrice)
 
 	for _, value := range prices {
@@ -123,6 +135,7 @@ func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow, response 
 		}
 	}
 
+	var response response
 	turnipLink := make(map[string]string)
 	for nickname, prices := range priceMap {
 		for _, d := range dayRange(Monday, Saturday) {
@@ -141,11 +154,11 @@ func buildPriceLinks(prices []turnips.GetWeeksPriceHistoryByServerRow, response 
 				turnipLink[nickname] += "-"
 			}
 		}
-		response += fmt.Sprintf("%s: <https://ac-turnip.com/#%s>\n", nickname, turnipLink[nickname])
+		response.Text += fmt.Sprintf(format, nickname, turnipLink[nickname])
 	}
 
-	reactionEmoji = "🔗"
-	return reactionEmoji, response
+	response.Emoji = "🔗"
+	return response
 }
 
 func dayRange(min, max Weekday) []int {

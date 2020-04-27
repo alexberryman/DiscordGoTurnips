@@ -4,14 +4,17 @@ import (
 	"DiscordGoTurnips/internal/turnips/generated-code"
 	"context"
 	"fmt"
+	"github.com/bwmarrin/discordgo"
+	"log"
 	"time"
 )
 
-func persistTurnipPrice(q *turnips.Queries, ctx context.Context, a turnips.Account, turnipPrice int, reactionEmoji string, response string) (string, string) {
+func persistTurnipPrice(ctx context.Context, m *discordgo.MessageCreate, s *discordgo.Session, a turnips.Account, turnipPrice int) {
+	err, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
 
-	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
 	if err != nil {
-		return reactionEmoji, response
+		log.Print(err)
+		flushEmojiAndResponseToDiscord(s, m, response)
 	}
 
 	priceParams := turnips.CreatePriceParams{
@@ -24,22 +27,23 @@ func persistTurnipPrice(q *turnips.Queries, ctx context.Context, a turnips.Accou
 		Week:      turnipPriceObj.Week,
 	}
 
+	q := turnips.New(db)
 	_, err = q.CreatePrice(ctx, priceParams)
 
 	if err != nil {
-		reactionEmoji = "⛔"
-		response = "You already created a price for this period"
+		response.Emoji = "⛔"
+		response.Text = "You already created a price for this period"
 	} else {
-		reactionEmoji, response = turnipPriceColorfulResponse(reactionEmoji, turnipPrice, response)
+		response = turnipPriceColorfulResponse(turnipPrice)
 	}
-	return reactionEmoji, response
+	flushEmojiAndResponseToDiscord(s, m, response)
+	linkUsersCurrentPrices(s, m, AcTurnipsImageLink)
 }
 
-func updateExistingTurnipPrice(q *turnips.Queries, ctx context.Context, a turnips.Account, turnipPrice int, reactionEmoji string, response string) (string, string) {
-
-	err, reactionEmoji, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
+func updateExistingTurnipPrice(ctx context.Context, s *discordgo.Session, m *discordgo.MessageCreate, a turnips.Account, turnipPrice int) {
+	err, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
 	if err != nil {
-		return reactionEmoji, response
+		flushEmojiAndResponseToDiscord(s, m, response)
 	}
 
 	priceParams := turnips.UpdatePriceParams{
@@ -51,25 +55,28 @@ func updateExistingTurnipPrice(q *turnips.Queries, ctx context.Context, a turnip
 		Year:      turnipPriceObj.Year,
 	}
 
+	q := turnips.New(db)
 	_, err = q.UpdatePrice(ctx, priceParams)
 
 	if err != nil {
-		reactionEmoji = "⛔"
-		response = "I didn't find an existing price."
+		response.Emoji = "⛔"
+		response.Text = "I didn't find an existing price."
 	} else {
-		reactionEmoji, response = turnipPriceColorfulResponse(reactionEmoji, turnipPrice, response)
+		response = turnipPriceColorfulResponse(turnipPrice)
 	}
-	return reactionEmoji, response
+
+	flushEmojiAndResponseToDiscord(s, m, response)
+	linkUsersCurrentPrices(s, m, AcTurnipsChartLink)
 }
 
-func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, string, string, turnips.TurnipPrice) {
+func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, response, turnips.TurnipPrice) {
 	accountTimeZone, err := time.LoadLocation(a.TimeZone)
-	var reactionEmoji string
-	var response string
+	var response response
+
 	if err != nil {
-		reactionEmoji := "⛔"
-		response := "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
-		return err, reactionEmoji, response, turnips.TurnipPrice{}
+		response.Emoji = "⛔"
+		response.Text = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+		return err, response, turnips.TurnipPrice{}
 	}
 
 	localTime := time.Now().In(accountTimeZone)
@@ -93,26 +100,27 @@ func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, string, 
 	}
 	priceThing.AmPm = meridiem
 
-	return err, reactionEmoji, response, priceThing
+	return err, response, priceThing
 }
 
-func turnipPriceColorfulResponse(reactionEmoji string, turnipPrice int, response string) (string, string) {
-	reactionEmoji = "✅"
+func turnipPriceColorfulResponse(turnipPrice int) response {
+	var response response
+	response.Emoji = "✅"
 	if turnipPrice == 69 {
-		response = "nice."
+		response.Text = "nice."
 	} else if turnipPrice > 0 && turnipPrice <= 100 {
-		response = fmt.Sprintf("Oh, your turnips are selling for %d right now? Sucks to be poor!", turnipPrice)
+		response.Text = fmt.Sprintf("Oh, your turnips are selling for %d right now? Sucks to be poor!", turnipPrice)
 	} else if turnipPrice > 0 && turnipPrice <= 149 {
-		response = fmt.Sprintf("Oh, your turnips are selling for %d right now? Meh.", turnipPrice)
+		response.Text = fmt.Sprintf("Oh, your turnips are selling for %d right now? Meh.", turnipPrice)
 	} else if turnipPrice > 0 && turnipPrice <= 150 {
-		response = fmt.Sprintf("Oh, your turnips are selling for %d right now? Decent!", turnipPrice)
+		response.Text = fmt.Sprintf("Oh, your turnips are selling for %d right now? Decent!", turnipPrice)
 	} else if turnipPrice > 0 && turnipPrice < 200 {
-		response = fmt.Sprintf("Oh shit, your turnips are selling for %d right now? Dope!", turnipPrice)
+		response.Text = fmt.Sprintf("Oh shit, your turnips are selling for %d right now? Dope!", turnipPrice)
 	} else if turnipPrice > 200 {
-		response = fmt.Sprintf("@everyone get in here! Someone has turnips trading for %d bells", turnipPrice)
+		response.Text = fmt.Sprintf("@everyone get in here! Someone has turnips trading for %d bells", turnipPrice)
 	} else {
-		response = "Is that even a real number?"
-		reactionEmoji = "❌"
+		response.Text = "Is that even a real number?"
+		response.Emoji = "❌"
 	}
-	return reactionEmoji, response
+	return response
 }

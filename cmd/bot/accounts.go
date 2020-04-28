@@ -23,7 +23,7 @@ func updateAccountTimeZone(ctx context.Context, input string, CmdTimeZone string
 		response.Emoji = "✅"
 	}
 
-	_, err = q.UpdateTimeZone(ctx, turnips.UpdateTimeZoneParams{
+	_, _ = q.UpdateTimeZone(ctx, turnips.UpdateTimeZoneParams{
 		DiscordID: a.DiscordID,
 		TimeZone:  timezoneInput,
 	})
@@ -31,7 +31,7 @@ func updateAccountTimeZone(ctx context.Context, input string, CmdTimeZone string
 	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func getOrCreateAccount(s *discordgo.Session, m *discordgo.MessageCreate, existingAccount int64, existingNickname int64, q *turnips.Queries, ctx context.Context) turnips.Account {
+func getOrCreateAccount(ctx context.Context, s *discordgo.Session, m *discordgo.MessageCreate, existingAccount int64, existingNickname int64, q *turnips.Queries) turnips.Account {
 	var account turnips.Account
 	var nickname turnips.Nickname
 	if existingAccount > 0 {

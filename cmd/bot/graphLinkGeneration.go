@@ -20,7 +20,10 @@ type response struct {
 	Emoji string
 }
 
+//AcTurnipsChartLink Formatting string for web links to ac-turnip
 const AcTurnipsChartLink = "%s: <https://ac-turnip.com/share?f=%s>\n"
+
+//AcTurnipsImageLink Formatting string for image links to ac-turnip
 const AcTurnipsImageLink = "%s: https://ac-turnip.com/p-%s.png\n"
 
 func linkServersCurrentPrices(s *discordgo.Session, m *discordgo.MessageCreate, linkFormat string) {
@@ -64,7 +67,10 @@ func linkAccountsPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session
 	q := turnips.New(db)
 	ctx := context.Background()
 
-	week, err := getCurrentWeek(m, q, ctx)
+	week, err := getCurrentWeek(ctx, m, q)
+	if err != nil {
+		log.Println("error fetching current week: ", err)
+	}
 
 	prices, err := q.GetHistoricalWeekPriceHistoryByAccount(ctx, turnips.GetHistoricalWeekPriceHistoryByAccountParams{
 		DiscordID: m.Author.ID,
@@ -89,7 +95,10 @@ func linkServersPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session,
 	q := turnips.New(db)
 	ctx := context.Background()
 
-	week, err := getCurrentWeek(m, q, ctx)
+	week, err := getCurrentWeek(ctx, m, q)
+	if err != nil {
+		log.Println("error fetching current week: ", err)
+	}
 
 	prices, err := q.GetHistoricalWeekPriceHistoryByServer(ctx, turnips.GetHistoricalWeekPriceHistoryByServerParams{
 		ServerID: m.GuildID,
@@ -109,7 +118,7 @@ func linkServersPreviousPrices(m *discordgo.MessageCreate, s *discordgo.Session,
 	flushEmojiAndResponseToDiscord(s, m, response)
 }
 
-func getCurrentWeek(m *discordgo.MessageCreate, q *turnips.Queries, ctx context.Context) (int, error) {
+func getCurrentWeek(ctx context.Context, m *discordgo.MessageCreate, q *turnips.Queries) (int, error) {
 	account, _ := q.GetAccount(ctx, m.Author.ID)
 	accountTimeZone, err := time.LoadLocation(account.TimeZone)
 	localTime := time.Now().In(accountTimeZone)
@@ -138,7 +147,7 @@ func buildPriceUri(prices []turnips.GetWeeksPriceHistoryByServerRow, format stri
 	var response response
 	turnipLink := make(map[string]string)
 	for nickname, prices := range priceMap {
-		for _, d := range dayRange(Monday, Saturday) {
+		for _, d := range dayRange(monday, saturday) {
 			if _, ok := turnipLink[nickname]; !ok {
 				turnipLink[nickname] = ""
 			}
@@ -172,7 +181,7 @@ func dayRange(min, max Weekday) []int {
 func getEmptyWeeklyPrices() map[string]dailyPrice {
 	w := newWeeklyPrices()
 
-	for _, d := range dayRange(Monday, Saturday) {
+	for _, d := range dayRange(monday, saturday) {
 		dp := dailyPrice{
 			DayOfWeek:      d,
 			MorningPrice:   0,

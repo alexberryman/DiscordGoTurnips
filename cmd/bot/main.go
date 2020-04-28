@@ -23,21 +23,22 @@ var (
 
 var db *sql.DB
 
+//Weekday Named integer for weekdays
 type Weekday int
 
 const (
-	Sunday Weekday = iota
-	Monday
-	Tuesday
-	Wednesday
-	Thursday
-	Friday
-	Saturday
+	sunday Weekday = iota
+	monday
+	tuesday
+	wednesday
+	thursday
+	friday
+	saturday
 )
 
-const CmdGraph = "graph"
-const CmdTimeZone = "timezone"
-const CmdUpdate = "update"
+const cmdGraph = "graph"
+const cmdTimeZone = "timezone"
+const cmdUpdate = "update"
 
 func init() {
 	Token = os.Getenv("DISCORD_TOKEN")
@@ -129,55 +130,57 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 
-		account := getOrCreateAccount(s, m, existingAccount, existingNickname, q, ctx)
+		account := getOrCreateAccount(ctx, s, m, existingAccount, existingNickname, q)
 
-		if turnipPrice, err := strconv.Atoi(input); err == nil {
-			persistTurnipPrice(ctx, m, s, account, turnipPrice)
-		} else if strings.Contains(input, CmdGraph) {
-			historyInput := strings.TrimSpace(strings.Replace(input, CmdGraph, "", 1))
-			if historyInput == "" {
-				linkUsersCurrentPrices(s, m, AcTurnipsChartLink)
-			} else if historyInput == "all" {
-				linkServersCurrentPrices(s, m, AcTurnipsChartLink)
-			} else if offset, err := strconv.Atoi(historyInput); err == nil {
-				linkAccountsPreviousPrices(m, s, offset*(-1), AcTurnipsChartLink)
-			} else if strings.HasPrefix(historyInput, "all") {
-				historicalServerInput := strings.TrimSpace(strings.Replace(historyInput, "all", "", 1))
-				if offset, err := strconv.Atoi(historicalServerInput); err == nil {
-					linkServersPreviousPrices(m, s, offset*(-1), AcTurnipsChartLink)
-				} else {
-					r.Text = "That isn't a valid week offset. Use -1, -2, -3 etc..."
-					r.Emoji = "⏰"
-					flushEmojiAndResponseToDiscord(s, m, r)
-					return
-				}
+		routeMessageToAction(ctx, s, m, input, account, q, botMentionToken)
+	}
+}
+
+func routeMessageToAction(ctx context.Context, s *discordgo.Session, m *discordgo.MessageCreate, input string, account turnips.Account, q *turnips.Queries, botMentionToken string) {
+	var r response
+
+	if turnipPrice, err := strconv.Atoi(input); err == nil {
+		persistTurnipPrice(ctx, m, s, account, turnipPrice)
+	} else if strings.Contains(input, cmdGraph) {
+		historyInput := strings.TrimSpace(strings.Replace(input, cmdGraph, "", 1))
+		if historyInput == "" {
+			linkUsersCurrentPrices(s, m, AcTurnipsChartLink)
+		} else if historyInput == "all" {
+			linkServersCurrentPrices(s, m, AcTurnipsChartLink)
+		} else if offset, err := strconv.Atoi(historyInput); err == nil {
+			linkAccountsPreviousPrices(m, s, offset*(-1), AcTurnipsChartLink)
+		} else if strings.HasPrefix(historyInput, "all") {
+			historicalServerInput := strings.TrimSpace(strings.Replace(historyInput, "all", "", 1))
+			if offset, err := strconv.Atoi(historicalServerInput); err == nil {
+				linkServersPreviousPrices(m, s, offset*(-1), AcTurnipsChartLink)
 			} else {
-				r.Emoji = "⛔"
-				r.Text = "That is not a valid history request"
+				r.Text = "That isn't a valid week offset. Use -1, -2, -3 etc..."
+				r.Emoji = "⏰"
 				flushEmojiAndResponseToDiscord(s, m, r)
-				return
 			}
-
-		} else if strings.Contains(input, CmdUpdate) {
-			updateInput := strings.TrimSpace(strings.Replace(input, CmdUpdate, "", 1))
-			if updateTurnipPrice, err := strconv.Atoi(updateInput); err == nil {
-				updateExistingTurnipPrice(ctx, s, m, account, updateTurnipPrice)
-			} else {
-				r.Emoji = "⛔"
-				r.Text = "That is not a valid price"
-				flushEmojiAndResponseToDiscord(s, m, r)
-				return
-			}
-
-		} else if strings.HasPrefix(input, CmdTimeZone) {
-			updateAccountTimeZone(ctx, input, CmdTimeZone, s, m, q, account)
-		} else if strings.HasPrefix(input, "help") {
-			helpResponse(s, m, botMentionToken, CmdGraph, CmdTimeZone)
 		} else {
-			r.Text = "Wut?"
+			r.Emoji = "⛔"
+			r.Text = "That is not a valid history request"
 			flushEmojiAndResponseToDiscord(s, m, r)
-			return
 		}
+
+	} else if strings.Contains(input, cmdUpdate) {
+		updateInput := strings.TrimSpace(strings.Replace(input, cmdUpdate, "", 1))
+		if updateTurnipPrice, err := strconv.Atoi(updateInput); err == nil {
+			updateExistingTurnipPrice(ctx, s, m, account, updateTurnipPrice)
+		} else {
+			r.Emoji = "⛔"
+			r.Text = "That is not a valid price"
+			flushEmojiAndResponseToDiscord(s, m, r)
+		}
+
+	} else if strings.HasPrefix(input, cmdTimeZone) {
+		updateAccountTimeZone(ctx, input, cmdTimeZone, s, m, q, account)
+	} else if strings.HasPrefix(input, "help") {
+		helpResponse(s, m, botMentionToken, cmdGraph, cmdTimeZone)
+	} else {
+		r.Text = "Wut?"
+		flushEmojiAndResponseToDiscord(s, m, r)
 	}
 }
 

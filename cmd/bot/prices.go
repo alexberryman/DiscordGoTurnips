@@ -10,7 +10,7 @@ import (
 )
 
 func persistTurnipPrice(ctx context.Context, m *discordgo.MessageCreate, s *discordgo.Session, a turnips.Account, turnipPrice int) {
-	err, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
+	response, turnipPriceObj, err := buildPriceObjFromInput(a, turnipPrice)
 
 	if err != nil {
 		log.Print(err)
@@ -41,7 +41,7 @@ func persistTurnipPrice(ctx context.Context, m *discordgo.MessageCreate, s *disc
 }
 
 func updateExistingTurnipPrice(ctx context.Context, s *discordgo.Session, m *discordgo.MessageCreate, a turnips.Account, turnipPrice int) {
-	err, response, turnipPriceObj := buildPriceObjFromInput(a, turnipPrice)
+	response, turnipPriceObj, err := buildPriceObjFromInput(a, turnipPrice)
 	if err != nil {
 		flushEmojiAndResponseToDiscord(s, m, response)
 	}
@@ -69,14 +69,14 @@ func updateExistingTurnipPrice(ctx context.Context, s *discordgo.Session, m *dis
 	linkUsersCurrentPrices(s, m, AcTurnipsChartLink)
 }
 
-func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, response, turnips.TurnipPrice) {
+func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (response, turnips.TurnipPrice, error) {
 	accountTimeZone, err := time.LoadLocation(a.TimeZone)
 	var response response
 
 	if err != nil {
 		response.Emoji = "⛔"
 		response.Text = "Set a valid timezone from the `TZ database name` column https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
-		return err, response, turnips.TurnipPrice{}
+		return response, turnips.TurnipPrice{}, err
 	}
 
 	localTime := time.Now().In(accountTimeZone)
@@ -100,7 +100,7 @@ func buildPriceObjFromInput(a turnips.Account, turnipPrice int) (error, response
 	}
 	priceThing.AmPm = meridiem
 
-	return err, response, priceThing
+	return response, priceThing, err
 }
 
 func turnipPriceColorfulResponse(turnipPrice int) response {

@@ -1,4 +1,6 @@
 # DiscordGoTurnips
+[![Go Report Card](https://goreportcard.com/badge/github.com/alexberryman/DiscordGoTurnips)](https://goreportcard.com/report/github.com/alexberryman/DiscordGoTurnips)
+[![Actions Status](https://github.com/alexberryman/discordgoturnips/workflows/Go/badge.svg)](https://github.com/alexberryman/discordgoturnips/actions)
 
 A bot for discord to store and report turnip prices for the members of service.
 

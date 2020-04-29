@@ -6,7 +6,7 @@ A bot for discord to store and report turnip prices for the members of service.
 
 ## Usage
 Mention the bot using `@BotName help` to see full list of commands:
-![usage image](./docs/images/usage.PNG)
+![usage image](docs/images/usage.png)
 
 To add a price just mention the bot followed by the current price that your store is buying turnips for. As a reply the bot will use the wonderful [Turnip-Calculator by elxris](https://github.com/elxris/Turnip-Calculator).
 

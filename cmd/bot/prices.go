@@ -116,7 +116,7 @@ func turnipPriceColorfulResponse(turnipPrice int) response {
 		response.Text = fmt.Sprintf("Oh, your turnips are selling for %d right now? Decent!", turnipPrice)
 	} else if turnipPrice > 0 && turnipPrice < 200 {
 		response.Text = fmt.Sprintf("Oh shit, your turnips are selling for %d right now? Dope!", turnipPrice)
-	} else if turnipPrice > 200 {
+	} else if turnipPrice >= 200 {
 		response.Text = fmt.Sprintf("@everyone get in here! Someone has turnips trading for %d bells", turnipPrice)
 	} else {
 		response.Text = "Is that even a real number?"

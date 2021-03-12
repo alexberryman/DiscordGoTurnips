@@ -10,16 +10,6 @@ Mention the bot using `@BotName help` to see full list of commands:
 
 To add a price just mention the bot followed by the current price that your store is buying turnips for. As a reply the bot will use the wonderful [Turnip-Calculator by elxris](https://github.com/elxris/Turnip-Calculator).
 
-## Invite this bot to your Discord Server
-Use this Discord link to invite `DisGoNips` to your server: https://discordapp.com/api/oauth2/authorize?client_id=700138490813481070&permissions=215104&scope=bot
-
-This bot requests the following permissions:
-- Send Messages
-- Embed Links
-- Read Message History
-- Mention Everyone
-- Add Reactions
-
 ## Deploy your own bot
 This project is configured to run on the free-tier of heroku. All you need is an application token from Discord.
 
